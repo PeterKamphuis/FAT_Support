@@ -1,7 +1,7 @@
 Pro Compare
 
 compile_opt idl2
-main_dir='/home/peter/FAT_Main/FAT_Testers/LVHIS-26_3/'
+main_dir='LVHIS-26_3/'
 
 catname='Galaxies.txt'
 
