@@ -1,6 +1,8 @@
 Pro Plotallrc
   compile_opt idl2
-  main_dir='/home/peter/FAT/LVHIS-26/'
+
+  main_dir='LVHIS-26_3/'
+
 
   catname=main_dir+'Galaxies.txt'
 ;catname='/Users/kam036/WALLABY/LVHIS-26/LVHIS-26_In Article/LVHIS_3_results.txt'
