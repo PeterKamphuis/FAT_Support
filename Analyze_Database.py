@@ -3,7 +3,7 @@
 # This script is to compare the any FAT fitting directory and produce the plots of the Current_Status report.
 
 #The config file should be the only input required. The script assumes that the model/high resolution fit is in ModelInput.def
-FATInput='FAT_INPUT.config'
+FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
 
 
 import os

@@ -1,7 +1,7 @@
 Pro Compare
 
 compile_opt idl2
-main_dir='/home/peter/FAT_Main/FAT_Testers/LVHIS-26_3/'
+main_dir='/home/peter/FAT/LVHIS-26/'
 
 catname='Galaxies.txt'
 
@@ -186,7 +186,6 @@ for i=0,n_elements(HPASSname)-1 do begin
       HPASSNAMEin1[i]=HPASSname[i]
    ENDIF ELSE BEGIN
      print,"We couldn't find the No Warp model Model"
-     stop
       HPASSNAMEin1[i]='-1'
       Tirresult=dblarr(2,10)
    ENDELSE
@@ -211,6 +210,10 @@ for i=0,n_elements(HPASSname)-1 do begin
    ENDIF ELSE begin
       HPASSNAMEin2[i]='-1'
       Tirresult2=dblarr(2,19)
+      if HPASSNAMEin1[i] EQ'-1' then begin
+         print,'We found no models, aborting'
+         stop
+      endif
       first=1
    ENDELSE
 
@@ -654,7 +657,7 @@ ENDFOR
 close,1
 ;print,catname
 ;print, FILE_TEST(catname)
-h=' '
+;h=' '
 ;openr,1,catname
 ;readf,1,h
 fitresult=dblarr(n_elements(HPASSName))
@@ -678,7 +681,7 @@ fitresult=dblarr(n_elements(HPASSName))
 fitresult[*]=1
 fitresult[11]=0
 fitresult[14]=0
-;fitresult[24]=0
+
 ;clean away the galaxies not fitted with rotcur
 
 
