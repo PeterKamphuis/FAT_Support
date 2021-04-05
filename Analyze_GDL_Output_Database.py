@@ -80,7 +80,16 @@ proc=dict()
 for i in range(len(dirname)):
 #for i in range(2):
     print(f'Processing directory {dirname[i]}')
-
+    if float(results['AC1'][results['DIRECTORY_NAME'].index(dirname[i])]) == 0.:
+        diameter_in_beams, SNR, RCshape = sf.get_name_info(dirname[i])
+        rcshapes[i] =RCshape
+        if RCshape not in RCs:
+            RCs[RCshape] = {dirname[i]: {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': 0.}}
+        else:
+            RCs[RCshape][dirname[i]] = {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': 0.}
+        beamarrange[i]= diameter_in_beams
+        SNRarrange[i] = float(SNR)
+        continue
 
     #os.chdir('/data/users/kamphuis/Artificial/'+dirname[i])
     os.chdir(f"{Template_in['MAINDIR']}{dirname[i]}")
@@ -101,12 +110,9 @@ for i in range(len(dirname)):
             RCs[RCshape]['MODEL'] = {'RADIUS':radii, 'RC':vrot, 'DISTANCE': distance[0], 'STATUS': -1}
     beamarrange[i]= diameter_in_beams
     SNRarrange[i] = float(SNR)
-    if not results['OS'][results['DIRECTORY_NAME'].index(dirname[i])]:
-        if os.path.isfile('Finalmodel/Finalmodel.def'):
-            output_name = 'Finalmodel/Finalmodel.def'
-            fitted[i] = 1
-        else:
-            continue
+    if float(results['AC2'][results['DIRECTORY_NAME'].index(dirname[i])]) == 0.:
+        output_name = 'Finalmodel/Finalmodel.def'
+        fitted[i] = 1
     else:
         output_name = 'Finalmodel/Finalmodel.def'
         fitted[i] = 2

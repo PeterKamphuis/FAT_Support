@@ -102,6 +102,21 @@ def load_output_catalogue(filename, debug = False):
             Results[columns[3]].append(f'{" ".join(vals[3:])}')
     return Results
 
+def load_OS_output_catalogue(filename, debug = False):
+    Results = {}
+    with open(filename) as file:
+        ini_line=file.readline()
+        tmp =[x.upper().strip() for x in ini_line.split()]
+        columns = [f'{tmp[0]}_{tmp[1]}',tmp[2],f'{tmp[3]}_{tmp[4]}_{tmp[5]}_{tmp[6]}']
+        for val in columns:
+            Results[val] = []
+        for line in file.readlines():
+            vals = [x.strip() for x in line.split()]
+            Results[columns[0]].append(vals[0])
+            Results[columns[1]].append(bool(vals[1]))
+            Results[columns[2]].append(f'{" ".join(vals[2:])}')
+    return Results
+
 def load_catalogue(filename, debug = False):
     Catalogue = Proper_Dictionary({})
     tmpfile = open(filename,'r')
