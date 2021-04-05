@@ -2,7 +2,7 @@ Pro Plotallrc
   compile_opt idl2
 
   main_dir='/home/peter/FAT/LVHIS-26/'
-
+version= 'v2.0.1'
 
   catname=main_dir+'Galaxies.txt'
 ;catname='/Users/kam036/WALLABY/LVHIS-26/LVHIS-26_In Article/LVHIS_3_results.txt'
@@ -219,7 +219,7 @@ A = FINDGEN(17) * (!PI*2/16.)
 USERSYM, COS(A), SIN(A), /FILL
 SET_PLOT, 'PS'
 
-DEVICE, FILENAME=main_dirsl+'AllRC.ps',/color,/PORTRAIT,/ENCAPSULATED,xsize=xsize,ysize=ysize,/DECOMPOSED
+DEVICE, FILENAME=main_dirsl+'Release_'version+'_Fig12Original.png',/color,/PORTRAIT,/ENCAPSULATED,xsize=xsize,ysize=ysize,/DECOMPOSED
 maxRAdius=MAX([Tirific[*,0,*],Rotcur[*,0,*],Diskfit[*,0,*]])
 MaxVel=MAX([Tirific[*,5,*],Rotcur[*,3,*],Diskfit[*,3,*]])
 Maxvel=210.
@@ -290,6 +290,6 @@ XYOUTS,0.5,0.05,'Radius (arcsec)',alignment=0.5,/normal,charsize=2.
 XYOUTS,0.05,0.5,'Velocity (km s!E-1!N)',alignment=0.5,ORIENTATION=90  ,/normal,charsize=2.
 
 DEVICE,/CLOSE
-convert_ps,main_dirsl+'AllRC.ps',/png,/trim
+convert_ps,main_dirsl+'Release_'version+'_Fig12Original.png',/png,/trim
 
 end

@@ -1,14 +1,12 @@
 #!/usr/local/bin/ python3
 
 # This script is to compare the any FAT fitting directory and produce the plots of the Current_Status report.
-#Last processed is pyFAT V0.02
+#Last processed is FAT V2.0.1
 #The config file should be the only input required. The script assumes that the model/high resolution fit is in ModelInput.def
-#FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
-#version = 'V2.0.1'
+FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
+version = 'V2.0.1'
 
 
-FATInput='/home/peter/FAT/Database/pyFAT_INPUT.config'                                                                                                                     
-version = 'V0.0.2'                                                                                                                                                         
 
 import os
 import numpy as np
@@ -47,11 +45,11 @@ if Template_in['ENDGALAXY'] == -1:
         end = 1
 end = Template_in['ENDGALAXY']
 dirname=catalogue['DIRECTORYNAME']
-print(Template_in['OUTPUTCATALOGUE'])
-if GDL:
-    results = sf.load_GDL_output_catalogue(Template_in['OUTPUTCATALOGUE'])
-else:
-    results = sf.load_output_catalogue(Template_in['OUTPUTCATALOGUE'])
+
+
+results = sf.load_GDL_output_catalogue(Template_in['OUTPUTCATALOGUE'])
+
+
 fitted = np.zeros((len(dirname)))
 incval =np.zeros((len(dirname),2))
 #paval = [[[],[]],[[],[]]]

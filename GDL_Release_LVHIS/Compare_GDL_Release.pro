@@ -3,7 +3,7 @@ Pro Compare
 compile_opt idl2
 
 main_dir='/home/peter/FAT/LVHIS-26/'
-
+version='v2.0.1'
 
 catname='Galaxies.txt'
 
@@ -1114,7 +1114,7 @@ endfor
   close,1
 
    SET_PLOT, 'PS'
-   DEVICE, FILENAME=main_dir+'Overviewmean.ps',/color,/PORTRAIT,/ENCAPSULATED,xsize=21,ysize=21*0.175/0.125,/DECOMPOSED
+   DEVICE, FILENAME=main_dir+'Release_'+version+'_Fig7Original.ps',/color,/PORTRAIT,/ENCAPSULATED,xsize=21,ysize=21*0.175/0.125,/DECOMPOSED
         ;Next up is the PA which we can plot
                                 ;either against radius but probably
                                 ;inclination is mor usefull so we do
@@ -1281,7 +1281,7 @@ endfor
 
 
    DEVICE,/CLOSE
-   convert_ps,main_dir+'Overviewmean.ps',/trim,/png
+   convert_ps,main_dir+'Release_'+version+'_Fig7Original.ps',/trim,/png
 
    tmp=WHERE(fitresult EQ 1 AND Z0 NE 0.)
    maxpay=MAX(double(Z0[tmp]),min=minpay)
