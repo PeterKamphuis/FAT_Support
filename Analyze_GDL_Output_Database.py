@@ -1,14 +1,10 @@
 #!/usr/local/bin/ python3
 
 # This script is to compare the any FAT fitting directory and produce the plots of the Current_Status report.
-#Last processed is pyFAT V0.02
+
 #The config file should be the only input required. The script assumes that the model/high resolution fit is in ModelInput.def
-#FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
-#version = 'V2.0.1'
+FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
 
-
-FATInput='/home/peter/FAT/Database/pyFAT_INPUT.config'                                                                                                                     
-version = 'V0.0.2'                                                                                                                                                         
 
 import os
 import numpy as np
@@ -84,7 +80,16 @@ proc=dict()
 for i in range(len(dirname)):
 #for i in range(2):
     print(f'Processing directory {dirname[i]}')
-
+    if float(results['AC1'][results['DIRECTORY_NAME'].index(dirname[i])]) == 0.:
+        diameter_in_beams, SNR, RCshape = sf.get_name_info(dirname[i])
+        rcshapes[i] =RCshape
+        if RCshape not in RCs:
+            RCs[RCshape] = {dirname[i]: {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': 0.}}
+        else:
+            RCs[RCshape][dirname[i]] = {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': 0.}
+        beamarrange[i]= diameter_in_beams
+        SNRarrange[i] = float(SNR)
+        continue
 
     #os.chdir('/data/users/kamphuis/Artificial/'+dirname[i])
     os.chdir(f"{Template_in['MAINDIR']}{dirname[i]}")
@@ -105,12 +110,9 @@ for i in range(len(dirname)):
             RCs[RCshape]['MODEL'] = {'RADIUS':radii, 'RC':vrot, 'DISTANCE': distance[0], 'STATUS': -1}
     beamarrange[i]= diameter_in_beams
     SNRarrange[i] = float(SNR)
-    if not results['OS'][results['DIRECTORY_NAME'].index(dirname[i])]:
-        if os.path.isfile('Finalmodel/Finalmodel.def'):
-            output_name = 'Finalmodel/Finalmodel.def'
-            fitted[i] = 1
-        else:
-            continue
+    if float(results['AC2'][results['DIRECTORY_NAME'].index(dirname[i])]) == 0.:
+        output_name = 'Finalmodel/Finalmodel.def'
+        fitted[i] = 1
     else:
         output_name = 'Finalmodel/Finalmodel.def'
         fitted[i] = 2
@@ -401,7 +403,7 @@ plt.figtext(0.5,0.91,f'Out of {len(incarrange)} galaxies, {len(np.where(fitted >
 #RAval = np.array(RAval)
 print(RAval.shape)
 
-plt.savefig('Release_'+version+'_All_1.png', bbox_inches='tight')
+plt.savefig('Release_v2.0_All_1.png', bbox_inches='tight')
 plt.close()
 labelfont= {'family':'Times New Roman',
             'weight':'normal',
@@ -486,7 +488,7 @@ plt.figtext(0.5,0.91,f'Out of {len(incarrange)} galaxies, {len(np.where(fitted >
 #RAval = np.array(RAval)
 print(RAval.shape)
 
-plt.savefig('Release_'+version+'_All_2.png', bbox_inches='tight')
+plt.savefig('Release_v2.0_All_2.png', bbox_inches='tight')
 plt.close()
 
 labelfont= {'family':'Times New Roman',
@@ -511,7 +513,7 @@ for i,key in enumerate(RCs):
         print(indi)
         tot += 1
         kpcradii = sf.convertskyangle(RCs[key][indi]['RADIUS'],distance= RCs[key][indi]['DISTANCE'])
-        print(kpcradii,RCs[key][indi]['DISTANCE'])
+
         if indi == 'MODEL':
             ax.plot(kpcradii[RCs[key][indi]['RC'] > 0.], RCs[key][indi]['RC'][RCs[key][indi]['RC'] > 0.], 'r',zorder= 2)
             ax.plot(kpcradii[RCs[key][indi]['RC'] > 0.], RCs[key][indi]['RC'][RCs[key][indi]['RC'] > 0.], 'ro',zorder=2)
@@ -531,7 +533,7 @@ for i,key in enumerate(RCs):
     ax.set_ylim(ymin,ymax+(ymax-ymin)/10.)
     ax.text(0.95,0.95,f'Out of {tot} galaxies, {failed} failed to fit. ', transform=ax.transAxes,horizontalalignment= 'right', verticalalignment='top')
 
-plt.savefig('Release_'+version+'_RC.png', bbox_inches='tight')
+plt.savefig('Release_v2.0_RC.png', bbox_inches='tight')
 plt.close()
 
 #It took 2454.8806738853455 seconds to run this
