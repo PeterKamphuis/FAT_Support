@@ -147,8 +147,12 @@ Pro plotdiffcircv3,fitresult,RAinput,DECinput,position=position,xtitle=xtitle,yt
    PLOTSYM, 3 , /FILL
    ;colormaps,'sauron_colormap'
    if tmp[0] NE -1 then begin
-      oplot,double(RAinput[tmp[check2],1]),double(DECinput[tmp[check2],1]),color=light_blue,psym=8,symsize=0.7
-      oplot,double(RAinput[tmp[check3],2]),double(DECinput[tmp[check3],2]),color=light_red,psym=8,thick=thick,symsize=0.7
+      if check2[0] NE -1 then begin
+         oplot,double(RAinput[tmp[check2],1]),double(DECinput[tmp[check2],1]),color=light_blue,psym=8,symsize=0.7
+      endif
+      if check3[0] NE -1 then begin
+         oplot,double(RAinput[tmp[check3],2]),double(DECinput[tmp[check3],2]),color=light_red,psym=8,thick=thick,symsize=0.7
+      endif
    ENDIF
 
 
@@ -208,8 +212,10 @@ Pro plotdiffcircv3,fitresult,RAinput,DECinput,position=position,xtitle=xtitle,yt
    check2=WHERE(double(RAinput[tmp,1]) NE 0.)
    check3=WHERE(double(RAinput[tmp,2]) NE 0.)
    PLOTSYM, 3 , /FILL
-   ;loadct,0
-   oplot,double(RAinput[tmp[check1],0]),double(DECinput[tmp[check1],0]),color=grey,psym=8,symsize=0.7
+                                ;loadct,0
+   if check1[0] NE -1 then begin
+      oplot,double(RAinput[tmp[check1],0]),double(DECinput[tmp[check1],0]),color=grey,psym=8,symsize=0.7
+   endif
    ;IF n_elements(errors) GT 0 then begin
     ;  ERRPLOT,double(RAinput[tmp[check1],0]),double(DECinput[tmp[check1],0])-errors[tmp[check1],0],double(DECinput[tmp[check1],0])+errors[tmp[check1],0],color=100,thick=!p.thick/2.
    ;ENDIF

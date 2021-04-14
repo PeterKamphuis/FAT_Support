@@ -1,7 +1,7 @@
 Pro Plotallrc
   compile_opt idl2
 
-  main_dir='/home/peter/FAT/LVHIS-26/'
+  main_dir='/home/peter/FAT_Main/Test_Sets/From_Bochum/LVHIS-26/'
 
 
   catname=main_dir+'Galaxies.txt'
@@ -47,10 +47,9 @@ WHILE ~EOF(1) do begin
    tmp=WHERE(values[0] EQ HPASSName)
 ;   print,HPASSName[tmp],values[1],values[2]
    case 1 OF
-        float(values[1]) EQ 1 and float(values[2]) EQ 1: fitresult[tmp] = 1
-        float(values[1]) EQ 1 and float(values[2]) EQ 0: fitresult[tmp] = 1.5
-        float(values[1]) EQ 0 and float(values[2]) EQ 0: fitresult[tmp] = 0;
-        else: fitresult[tmp] = 0;
+      values[1] EQ 'True': fitresult[tmp] = 1
+      values[1] EQ 'False': fitresult[tmp] = 0
+      else: fitresult[tmp] = 0;
    ENDCASE
 ENDWHILE
 close,1

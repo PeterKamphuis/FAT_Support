@@ -2,10 +2,10 @@ Pro Compare
 
 compile_opt idl2
 
-main_dir='/home/peter/FAT/LVHIS-26/'
+main_dir='/home/peter/FAT_Main/Test_Sets/From_Bochum/LVHIS-26/'
 
 
-catname='Galaxies.txt'
+catname=main_dir+'Galaxies.txt'
 
 spacecheck=strtrim(str_sep(main_dir,' '),2)
 main_dirsl=STRJOIN(spacecheck,'\ ')
@@ -187,7 +187,7 @@ for i=0,n_elements(HPASSname)-1 do begin
       gettirific,main_dir+'/'+HPASSname[i]+'/No_Warp/No_Warp.def',Tirparameters,Tirresult
       HPASSNAMEin1[i]=HPASSname[i]
    ENDIF ELSE BEGIN
-     print,"We couldn't find the No Warp model Model"
+      print,"We couldn't find the No Warp model Model"
       HPASSNAMEin1[i]='-1'
       Tirresult=dblarr(2,10)
    ENDELSE
@@ -209,6 +209,7 @@ for i=0,n_elements(HPASSname)-1 do begin
       beamarea=(!pi*ABS(double(sxpar(hed,'BMAJ'))*double(sxpar(hed,'BMIN'))))/(4.*ALOG(2.))
       pixperbeam[i]=beamarea/(ABS(sxpar(hed,'CDELT1'))*ABS(sxpar(hed,'CDELT2')))
       HPASSNAMEin2[i]=HPASSname[i]
+ 
    ENDIF ELSE begin
       HPASSNAMEin2[i]='-1'
       Tirresult2=dblarr(2,19)
@@ -519,7 +520,7 @@ for i=0,n_elements(HPASSname)-1 do begin
 
 
    ENDIF
-
+   print,'I have no idea what is happening'
    IF DFHPASSNamein[i] NE '-1' then begin
       DFradius[i]=DFresult[n_elements(DFResult[*,0])-1,0]+ABS((DFResult[n_elements(DFResult[*,0])-1,0]-DFResult[n_elements(DFResult[*,0])-2,0])/2.)
       calcavv2,[[TirResult2[*,4]],[TirResult2[*,8]]],DFresult[*,7],radii,DFresult[*,0],average=av,mean=mean,rms=rms,error1=[[TirResult2[*,12]],[TirResult2[*,13]]],error2=DFResult[*,8]
@@ -644,7 +645,7 @@ for i=0,n_elements(HPASSname)-1 do begin
       DFRCvobsrmsmean[i]=MEDIAN(diff)
       DFRCvobsrmsav[i]=TOTAL(ABS(diff))/n_elements(diff)
 
-
+      print,'I have no idea what is happening'
       DFRAdeg[i]=DFResult[0,9]
       DFRAerr[i]=DFResult[0,10]
       DFDECdeg[i]=DFResult[0,11]
@@ -655,35 +656,37 @@ for i=0,n_elements(HPASSname)-1 do begin
    ENDIF
 
 ENDFOR
+
+
 ;We should also read the pipeline result
 close,1
-;print,catname
-;print, FILE_TEST(catname)
-;h=' '
-;openr,1,catname
-;readf,1,h
+print,catname
+h=''
+openr,1,catname
+readf,1,h
 fitresult=dblarr(n_elements(HPASSName))
-;WHILE ~ EOF(1) do begin
-;   readf,1,h
-;   values=str_sep(strtrim(strcompress(h)),' ')
-;   tmp=WHERE(values[1] EQ HPASSName)
-;   print,values[1],HPASSName[tmp],values[2]
-;   IF first EQ 1 then begin
-;      IF ~ isnumeric(values[2]) then begin
-;         fitresult[tmp]=2
-;      ENDIF ELSE fitresult[tmp]=double(values[2])
-;   ENDIF
-;   IF first EQ 2 then begin
-;      IF ~ isnumeric(values[3]) then begin
-;         fitresult[tmp]=2
-;      ENDIF ELSE fitresult[tmp]=double(values[3])
-;   ENDIF
-;ENDWHILE
-;close,1
-fitresult[*]=1
-fitresult[11]=0
-fitresult[14]=0
 
+WHILE ~EOF(1) do begin
+   readf,1,h
+;   print,h
+   values=str_sep(strtrim(strcompress(h)),' ')
+;   print,values
+   tmp=WHERE(values[0] EQ HPASSName)
+;   print,HPASSName[tmp],values[1]
+   case 1 OF
+      values[1] EQ 'True': fitresult[tmp] = 1
+      values[1] EQ 'False': fitresult[tmp] = 0
+      else: fitresult[tmp] = 0;
+   ENDCASE
+ENDWHILE
+close,1
+
+;fitresult=dblarr(n_elements(HPASSName))
+
+;fitresult[*]=1
+;fitresult[11]=0
+;fitresult[14]=0
+;fitresult[20]=0
 ;clean away the galaxies not fitted with rotcur
 
 
@@ -718,9 +721,10 @@ for i=0,n_elements(HPASSName)-1 do begin
 endfor
 close,1
 
+print,'Dow e get here?'
 
-
-
+print,first
+first=2
 openw,1,main_dir+'FittedRingDifferences'+string(first,format='(I1)')+'.txt'
 printf,1,format='(10A10)','Name','PA_'+string(first,format='(I1)'),'PA_RC','PA_DF','INC_'+string(first,format='(I1)'),'INC_RC','INC_DF','VROT_'+string(first,format='(I1)'),'VROT_RC','VROT_DF'
 for i=0,n_elements(HPASSName)-1 do begin
@@ -736,8 +740,8 @@ endfor
 close,1
 
 IF first EQ 2 then begin
-   incllim=[19.,90.]
-   beamlow=3.9
+   incllim=[10.,90.]
+   beamlow=1.9
   !p.charsize=1.1
   !p.thick=7
   fitresultsmall=fitresult
@@ -890,6 +894,7 @@ IF first EQ 2 then begin
       print,HPASSNAME[tmp[i]],double(INCL[tmp[i]]),double(litPA[tmp[i]])-double(PAhalf[tmp[i]]),double(litPA[tmp[i]]),double(PAhalf[tmp[i]])
    endfor
    tmp=WHERE(double(fitresult) EQ 1 AND double(litpa) NE 0.)
+   print,tmp,fitresult,litpa
    PLOTSYM, 0 , /FILL
    ;oplot,double(INCL[tmp]),double(litPA[tmp])-double(PAhalf[tmp]),color=black,psym=8
    xerr = dblarr(n_elements(tmp))
@@ -897,41 +902,48 @@ IF first EQ 2 then begin
    fat_ploterror,double(INCL[tmp]),double(litPA[tmp])-double(PAhalf[tmp]),xerr,yerr,psym = 8, $
                      color=black,ERRCOLOR = black, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
    tmp=WHERE(double(fitresult) EQ 1.5 AND double(litpa) NE 0.)
-   print,'here we plot our info on PA literature out fat range'
-   for i=0,n_elements(tmp)-1 do begin
-      print,HPASSNAME[tmp[i]],double(INCL[tmp[i]]),double(litPA[tmp[i]])-double(PAhalf[tmp[i]]),double(litPA[tmp[i]]),double(PAhalf[tmp[i]])
-   endfor
-   PLOTSYM, 3 , /FILL
-   xerr = dblarr(n_elements(tmp))
-   yerr= xerr
-   fat_ploterror,double(INCL[tmp]),double(litPA[tmp])-double(PAhalf[tmp]),xerr,yerr,psym = 8, $
-                     color=grey,ERRCOLOR = grey, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+
+   if tmp[0] NE -1 then begin
+      print,'here we plot our info on PA literature out fat range'
+      for i=0,n_elements(tmp)-1 do begin
+         print,HPASSNAME[tmp[i]],double(INCL[tmp[i]]),double(litPA[tmp[i]])-double(PAhalf[tmp[i]]),double(litPA[tmp[i]]),double(PAhalf[tmp[i]])
+      endfor
+      PLOTSYM, 3 , /FILL
+      xerr = dblarr(n_elements(tmp))
+      yerr= xerr
+      fat_ploterror,double(INCL[tmp]),double(litPA[tmp])-double(PAhalf[tmp]),xerr,yerr,psym = 8, $
+                    color=grey,ERRCOLOR = grey, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+   ENDIF
    ;oplot,double(INCL[tmp]),double(litPA[tmp])-double(PAhalf[tmp]),color=black,psym=8,symsize=0.7
    ;Then we want where there is a RC result and a PA
     tmp2=WHERE(double(RCpahalf) NE 0. AND double(litpa) NE 0. AND double(fitresult) EQ 1)
-   av=TOTAL(double(litPA[tmp2])-double(RCPAhalf[tmp2]))/n_elements(tmp2)
-    printf,1,'\sigma_{PA-RC}= '+string(STDDEV(double(litPA[tmp2])-double(RCPAhalf[tmp2])),format='(F6.2)')+', av-RC='+string(av,format='(F6.2)')+'No gal = '+string(n_elements(tmp2))
+    if tmp2[0] NE -1 then begin
+       av=TOTAL(double(litPA[tmp2])-double(RCPAhalf[tmp2]))/n_elements(tmp2)
+       printf,1,'\sigma_{PA-RC}= '+string(STDDEV(double(litPA[tmp2])-double(RCPAhalf[tmp2])),format='(F6.2)')+', av-RC='+string(av,format='(F6.2)')+'No gal = '+string(n_elements(tmp2))
 
-    PLOTSYM, 0 , /FILL
-    print,tmp2
-    print,'Do we ahve any ble?'
-    print,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2])
+       PLOTSYM, 0 , /FILL
+       print,tmp2
+       print,'Do we ahve any ble?'
+       print,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2])
 
-    oplot,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),color= blue, psym=8
-    xerr = dblarr(n_elements(tmp2))
-    yerr= xerr
-    fat_ploterror,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),xerr,yerr,psym = 8, $
+       oplot,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),color= blue, psym=8
+       xerr = dblarr(n_elements(tmp2))
+       yerr= xerr
+       fat_ploterror,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),xerr,yerr,psym = 8, $
                      color=blue,ERRCOLOR = blue, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-    xxx=WHERE(ABS(double(litPA[tmp2])-double(RCPAhalf[tmp2])) GT 40)
-    Print,"here we go"
+       xxx=WHERE(ABS(double(litPA[tmp2])-double(RCPAhalf[tmp2])) GT 40)
+       Print,"here we go"
+    endif
     tmp2=WHERE(double(RCpahalf) NE 0. AND double(litpa) NE 0. AND double(fitresult) EQ 1.5)
+
     PLOTSYM, 3 , /FILL
     light_blue = '0092FF'x
-    xerr = dblarr(n_elements(tmp2))
-    yerr= xerr
-    fat_ploterror,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),xerr,yerr,psym = 8, $
+    if tmp2[0] NE -1 then begin
+       xerr = dblarr(n_elements(tmp2))
+       yerr= xerr
+       fat_ploterror,double(INCL[tmp2]),double(litPA[tmp2])-double(RCPAhalf[tmp2]),xerr,yerr,psym = 8, $
                      color=light_blue,ERRCOLOR = light_blue, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-
+    endif
    ; for nj=0,n_elements(xxx)-1 do begin
    ;    print,HPASSNAme[tmp2[xxx[nj]]],double(litPA[tmp2[xxx[nj]]])-double(RCPAhalf[tmp2[xxx[nj]]]),double(INCL[tmp2[xxx[nj]]]),litPA[tmp2[xxx[nj]]],double(litPA[tmp2[xxx[nj]]])-double(PAhalf[tmp2[xxx[nj]]]),double(PAhalf[tmp2[xxx[nj]]]),double(RCPAhalf[tmp2[xxx[nj]]])
 
@@ -942,24 +954,27 @@ IF first EQ 2 then begin
     print,DFHPASSNamein,litPA
     print,'Dunno'
     tmp3=WHERE(DFHPASSNamein NE '-1' AND double(litpa) NE 0.  AND double(fitresult) EQ 1)
-    av=TOTAL(double(litPA[tmp3])-double(DFPAhalf[tmp3]))/n_elements(tmp3)
-    printf,1,'\sigma_{PA-DF}= '+string(STDDEV(double(litPA[tmp3])-double(DFPAhalf[tmp3])),format='(F6.2)')+', av-DF='+string(av,format='(F6.2)')+'No gal = '+string(n_elements(tmp3))
+    if tmp3[0] NE -1 then begin
+       av=TOTAL(double(litPA[tmp3])-double(DFPAhalf[tmp3]))/n_elements(tmp3)
+       printf,1,'\sigma_{PA-DF}= '+string(STDDEV(double(litPA[tmp3])-double(DFPAhalf[tmp3])),format='(F6.2)')+', av-DF='+string(av,format='(F6.2)')+'No gal = '+string(n_elements(tmp3))
 
 
-    PLOTSYM, 0 , /FILL
-    print,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3])
-    xerr = dblarr(n_elements(tmp3))
-    yerr= xerr
-    fat_ploterror,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),xerr,yerr,psym = 8, $
+       PLOTSYM, 0 , /FILL
+       print,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3])
+       xerr = dblarr(n_elements(tmp3))
+       yerr= xerr
+       fat_ploterror,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),xerr,yerr,psym = 8, $
                      color=red,ERRCOLOR = red, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-
+    endif
     ;oplot,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),color='FF0000',psym=8,thick=thick
     tmp3=WHERE(DFHPASSNamein NE '-1' AND double(litpa) NE 0.  AND double(fitresult) EQ 1.5)
     PLOTSYM, 3 , /FILL
-    xerr = dblarr(n_elements(tmp3))
-    yerr= xerr
-    fat_ploterror,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),xerr,yerr,psym = 8, $
+    if tmp3[0] NE -1 then begin
+       xerr = dblarr(n_elements(tmp3))
+       yerr= xerr
+       fat_ploterror,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),xerr,yerr,psym = 8, $
                      color=light_red,ERRCOLOR = light_red, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+    endif
     ;oplot,double(INCL[tmp3]),double(litPA[tmp3])-double(DFPAhalf[tmp3]),color='ffb6c1',psym=8,thick=thick,symsize=0.7
     close,1
 
@@ -1037,55 +1052,62 @@ IF first EQ 2 then begin
   PLOTSYM, 3 , /FILL
   ;oplot,double(INCL[tmp]),double(litINCL[tmp])-double(INCLhalf[tmp]),color=100,psym=8,symsize=0.7
   ;errplot,double(INCL[tmp]),double(litINCL[tmp])-double(INCLhalf[tmp])-litinclerr[tmp],double(litINCL[tmp])-double(INCLhalf[tmp])+litinclerr[tmp],thick=thick,color=100
-  xerr = dblarr(n_elements(tmp))
-  fat_ploterror,double(INCL[tmp]),double(litINCL[tmp])-double(INCLhalf[tmp]),xerr,litinclerr[tmp],psym = 8, $
-                   color=grey,ERRCOLOR = grey, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
 
+  if tmp[0] NE -1 then begin
+     xerr = dblarr(n_elements(tmp))
+     fat_ploterror,double(INCL[tmp]),double(litINCL[tmp])-double(INCLhalf[tmp]),xerr,litinclerr[tmp],psym = 8, $
+                   color=grey,ERRCOLOR = grey, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+  endif
 
 
   tmp2=WHERE(RCinclhalf NE 0. AND litincl NE 0. and INCL GT 0 AND INCL LT 90 AND fitresult EQ 1)
 
   PLOTSYM, 0 , /FILL
-  ;oplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),color=50,psym=8,thick=thick
-  ;errplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2])-litinclerr[tmp2],double(litINCL[tmp2])-double(RCINCLhalf[tmp2])+litinclerr[tmp2],thick=thick,color=50
-  xerr = dblarr(n_elements(tmp2))
-  fat_ploterror,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),xerr,litinclerr[tmp2],psym = 8, $
+                                ;oplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),color=50,psym=8,thick=thick
+                                ;errplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2])-litinclerr[tmp2],double(litINCL[tmp2])-double(RCINCLhalf[tmp2])+litinclerr[tmp2],thick=thick,color=50
+  if tmp2[0] NE -1 then begin
+     xerr = dblarr(n_elements(tmp2))
+     fat_ploterror,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),xerr,litinclerr[tmp2],psym = 8, $
                    color=blue,ERRCOLOR = blue, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-
+  endif
 
   tmp2=WHERE(RCinclhalf NE 0. AND litincl NE 0. and INCL GT 0 AND INCL LT 90 AND fitresult EQ 1.5)
 
   PLOTSYM, 3 , /FILL
-  ;oplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),color=65,psym=8,thick=thick,symsize=0.7
-  ;errplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2])-litinclerr[tmp2],double(litINCL[tmp2])-double(RCINCLhalf[tmp2])+litinclerr[tmp2],thick=thick,color=65
-  xerr = dblarr(n_elements(tmp2))
-  fat_ploterror,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),xerr,litinclerr[tmp2],psym = 8, $
+                                ;oplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),color=65,psym=8,thick=thick,symsize=0.7
+                                ;errplot,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2])-litinclerr[tmp2],double(litINCL[tmp2])-double(RCINCLhalf[tmp2])+litinclerr[tmp2],thick=thick,color=65
+  if tmp2[0] NE -1 then begin 
+     xerr = dblarr(n_elements(tmp2))
+     fat_ploterror,double(INCL[tmp2]),double(litINCL[tmp2])-double(RCINCLhalf[tmp2]),xerr,litinclerr[tmp2],psym = 8, $
                    color=light_blue,ERRCOLOR = light_blue, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-
+  endif
 
   tmp3=WHERE(DFHPASSNamein NE '-1' AND double(litincl) NE 0.  and INCL GT 0 AND INCL LT 90 AND fitresult EQ 1)
   PLOTSYM, 0 , /FILL
-  ;oplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),color=254,psym=8,thick=thick
-  ;errplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3])-litinclerr[tmp3],double(litINCL[tmp3])-double(DFINCLhalf[tmp3])+litinclerr[tmp3],thick=thick,color=254
-  xerr = dblarr(n_elements(tmp3))
-  fat_ploterror,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),xerr,litinclerr[tmp3],psym = 8, $
+                                ;oplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),color=254,psym=8,thick=thick
+                                ;errplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3])-litinclerr[tmp3],double(litINCL[tmp3])-double(DFINCLhalf[tmp3])+litinclerr[tmp3],thick=thick,color=254
+  if tmp3[0] NE -1 then begin 
+     xerr = dblarr(n_elements(tmp3))
+     fat_ploterror,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),xerr,litinclerr[tmp3],psym = 8, $
                    color=red,ERRCOLOR = red ,ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
 
-
+  endif
   tmp3=WHERE(DFHPASSNamein NE '-1' AND double(litincl) NE 0.  and INCL GT 0 AND INCL LT 90 AND fitresult EQ 1.5)
   PLOTSYM, 3 , /FILL
-  ;oplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),color=240,psym=8,thick=thick,symsize=0.7
-  ;errplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3])-litinclerr[tmp3],double(litINCL[tmp3])-double(DFINCLhalf[tmp3])+litinclerr[tmp3],thick=thick,color=240
-  xerr = dblarr(n_elements(tmp3))
-  fat_ploterror,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),xerr,litinclerr[tmp3],psym = 8, $
+                                ;oplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),color=240,psym=8,thick=thick,symsize=0.7
+                                ;errplot,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3])-litinclerr[tmp3],double(litINCL[tmp3])-double(DFINCLhalf[tmp3])+litinclerr[tmp3],thick=thick,color=240
+  if tmp3[0] NE -1 then begin 
+     xerr = dblarr(n_elements(tmp3))
+     fat_ploterror,double(INCL[tmp3]),double(litINCL[tmp3])-double(DFINCLhalf[tmp3]),xerr,litinclerr[tmp3],psym = 8, $
                    color=light_red,ERRCOLOR =light_red, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
-
+   endif
    tmpx=WHERE(INCL GT 0. AND INCL LT 40.)
    print,'these galxies ar above 70 degrees.'
-
-   for i=0,n_elements(tmpx)-1 do begin
-   print,STRJOIN([JNAME[tmpx[i]],JNumber[tmpx[i]],string(INCL[tmpx[i]]),string(INCLhalf[tmpx[i]]),string(litINCL[tmpx[i]]),string(RCinclhalf[tmpx[i]]),string(DFINCLhalf[tmpx[i]]),string(DFRCinclrmsav[tmpx[i]]),string(RCinclrmsav[tmpx[i]]),string(DFinclrmsav[tmpx[i]]),string(fitresult[tmpx[i]])],'**')
-endfor
+   if tmpx[0] NE -1 then begin 
+      for i=0,n_elements(tmpx)-1 do begin
+         print,STRJOIN([JNAME[tmpx[i]],JNumber[tmpx[i]],string(INCL[tmpx[i]]),string(INCLhalf[tmpx[i]]),string(litINCL[tmpx[i]]),string(RCinclhalf[tmpx[i]]),string(DFINCLhalf[tmpx[i]]),string(DFRCinclrmsav[tmpx[i]]),string(RCinclrmsav[tmpx[i]]),string(DFinclrmsav[tmpx[i]]),string(fitresult[tmpx[i]])],'**')
+      endfor
+   endif
    tmp=WHERE(fitresult EQ 1 AND litincl NE 0. and INCL GT 0. AND INCL LT 40.)
    tmp2=WHERE(RCinclhalf NE 0. AND fitresult EQ 1. AND litincl NE 0. and INCL GT 0. AND INCL LT 40.)
    tmp3=WHERE(DFHPASSNamein NE '-1'  AND fitresult EQ 1. AND double(litincl) NE 0.  and INCL GT 0. AND INCL LT 40.)
@@ -1102,7 +1124,8 @@ endfor
 
  DEVICE,/CLOSE
   convert_ps,main_dir+'Overviewlit.ps',/trim,/png,/delete
-
+  print,'What happended to my plots'
+ 
 ;Some alternative plots
   !p.charsize=1.1
   !p.thick=thick

@@ -155,10 +155,12 @@ Pro plotdifflinev3,fitresult,PAinput,RCINCL,position=position,xtitle=xtitle,ytit
            ;oplot,double(RCINCL[tmp[check2],1]),double(PAinput[tmp[check2],1]),color=blue,psym=8
            ;IF n_elements(errors) GT 0 then begin
           ;    ERRPLOT,double(RCINCL[tmp[check2],1]),double(PAinput[tmp[check2],1])-errors[tmp[check2],1],double(PAinput[tmp[check2],1])+errors[tmp[check2],1],color=50,thick=!p.thick/2.
-          ; ENDIF
-          xerr=dblarr( n_elements(tmp[check3]))
-          fat_ploterror,double(RCINCL[tmp[check3],2]),double(PAinput[tmp[check3],2]),xerr,errors[tmp[check3],2],psym = 8, $
-                     color=light_red,ERRCOLOR = light_red, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+                                ; ENDIF
+          if check3[0] NE -1 then begin
+             xerr=dblarr( n_elements(tmp[check3]))          
+             fat_ploterror,double(RCINCL[tmp[check3],2]),double(PAinput[tmp[check3],2]),xerr,errors[tmp[check3],2],psym = 8, $
+                           color=light_red,ERRCOLOR = light_red, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
+          endif
            ;oplot,double(RCINCL[tmp[check2],1]),double(PAinput[tmp[check2],1]),color=65,psym=8,symsize=0.7
            ;IF n_elements(errors) GT 0 then begin
           ;    ERRPLOT,double(RCINCL[tmp[check2],1]),double(PAinput[tmp[check2],1])-errors[tmp[check2],1],double(PAinput[tmp[check2],1])+errors[tmp[check2],1],color=65,thick=!p.thick/2.
@@ -255,7 +257,8 @@ Pro plotdifflinev3,fitresult,PAinput,RCINCL,position=position,xtitle=xtitle,ytit
 
         PLOTSYM, 3 , /FILL
         ;loadct,0
-        IF tmp[0] NE -1 then begin
+        IF check1[0] NE -1 and tmp[0] NE -1 then begin
+           
           xerr= dblarr(n_elements(tmp[check1]))
           fat_ploterror,double(RCINCL[tmp[check1],0]),double(PAinput[tmp[check1],0]),xerr,errors[tmp[check1],0],psym = 8, $
                      color=grey,ERRCOLOR = grey, ERRTHICK=!p.thick*0.4,symsize=ssize,/over_plot
