@@ -7,7 +7,7 @@
 #version = 'V2.0.1'
 
 
-FATInput='/home/peter/FAT/Database/pyFAT_INPUT.config'                                                                                                                     
+FATInput='/home/peter/FAT/Database/pyFAT_INPUT.config'                                                                                                                    
 version = 'V0.0.2'                                                                                                                                                         
 
 import os
