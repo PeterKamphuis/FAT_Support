@@ -8,15 +8,9 @@ import numpy as np
 
 
 
-maindir= '/home/peter/FAT/LVHIS-26_pyFAT_v0.0.2'
+maindir= '/home/peter/FAT_Main/FAT_Testers/LVHIS-26_3'
 cat = 'Data_LVHIS.txt'
-#clean all
 clean = ['One_Step','Old_pyFAT', 'GDL','Finalmodel','Sofia_Output' ]
-#clean GDL
-clean = ['GDL']
-#clean pyFAT
-#clean = ['One_Step','Old_pyFAT']
-
 #clean = ['GDL']
 
 def catalogue(filename, debug = False):
@@ -72,8 +66,8 @@ except KeyError:
     list_subfolders_with_paths = [f"{maindir}/{x}" for x in input_cat['DIRECTORYNAME']]
 
 if 'One_Step' in clean:
-    dirs = ['Logs','One_Step_Convergence','tmp_incl_check']
-    files = ['Overview_Prev.png','*_FAT-Basic_Info.txt','*_FAT.fits','tmp_incl_check_In.def']
+    dirs = ['Logs','One_Step_Convergence']
+    files = ['Overview_Prev.png','*_FAT-Basic_Info.txt','*_FAT.fits']
     remove_these(maindir,list_subfolders_with_paths,dirs,files)
 
 
@@ -85,15 +79,13 @@ if 'Old_pyFAT' in clean:
 
 if 'GDL' in clean:
     dirs = ['Intermediate','No_Warp','Warp_Info','PV-Diagrams','Residuals','Moments']
-    files = ['Prev_Log.txt','Log.txt','the_last_input.def', 'Overview_Prev.png' ,'BasicInfo*.txt','*_preprocessed*.fits']
+    files = ['the_last_input.def', 'Overview_Prev.png' ,'BasicInfo*.txt','*_preprocessed*.fits']
     remove_these(maindir,list_subfolders_with_paths,dirs,files)
 
 if 'Finalmodel' in clean:
     dirs = ['Finalmodel']
     files = ['Overview.png']
-    remove_these(maindir,list_subfolders_with_paths,dirs,files)
 
 if 'Sofia_Output' in clean:
     dirs = ['Sofia_Output']
-    files = []
-    remove_these(maindir,list_subfolders_with_paths,dirs,files)
+    files = ['']
