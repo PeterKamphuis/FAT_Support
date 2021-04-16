@@ -7,7 +7,7 @@
 #version = 'V2.0.1'
 
 
-FATInput='/home/peter/FAT/Database/pyFAT_INPUT.config'
+FATInput='/home/peter/FAT/Database_pyFAT_v0.0.2/pyFAT_INPUT.config'
 version = 'V0.0.2'
 
 import os
@@ -119,11 +119,11 @@ for i in range(len(dirname)):
         sbrfat, sbrfat_err, incfat, incfat_err,pafat,pafat_err, RAfat,DECfat,vsysfat,dispfat,dispfat_err,vrot2fat,vrot2fat_err,scaleheight2fat \
         ,scaleheight2fat_err,sbr2fat, sbr2fat_err,inc2fat,inc2fat_err,pa2fat, pa2fat_err, \
         RA2fat,DEC2fat,vsys2fat,disp2fat,disp2fat_err,instdispfat,cfluxfat,cflux2fat = sf.load_tirific(output_name)
-        if float(RAfat) < 0.:
+        if float(RAfat[0]) < 0.:
             RAfat[0] = float(RAfat[0])+360.
-        if float(RA2fat) < 0.:
+        if float(RA2fat[0]) < 0.:
             RA2fat[0] = float(RA2fat[0])+360.
-            
+
         illegit =np.where(sbrfat < 1e-8)[0]
         if len(illegit) > 0:
             sbrfat[illegit] = 0.
