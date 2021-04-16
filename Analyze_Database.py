@@ -120,7 +120,10 @@ for i in range(len(dirname)):
         ,scaleheight2fat_err,sbr2fat, sbr2fat_err,inc2fat,inc2fat_err,pa2fat, pa2fat_err, \
         RA2fat,DEC2fat,vsys2fat,disp2fat,disp2fat_err,instdispfat,cfluxfat,cflux2fat = sf.load_tirific(output_name)
         if float(RAfat[0]) < 0.:
+            print(RAfat)
             RAfat[0] = float(RAfat[0])+360.
+            print(RAfat)
+            exit()
         if float(RA2fat[0]) < 0.:
             RA2fat[0] = float(RA2fat[0])+360.
 
