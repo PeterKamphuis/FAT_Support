@@ -8,8 +8,10 @@ import numpy as np
 
 
 
-maindir= '/home/peter/FAT_Main/FAT_Testers/LVHIS-26_3'
-cat = 'Data_LVHIS.txt'
+#maindir= '/home/peter/FAT/LVHIS-26'
+maindir= '/home/peter/FAT/Database'
+#cat = 'Data_LVHIS.txt'
+cat = 'Output_Summary.txt'
 clean = ['One_Step','Old_pyFAT', 'GDL','Finalmodel','Sofia_Output' ]
 #clean = ['GDL']
 
@@ -85,7 +87,9 @@ if 'GDL' in clean:
 if 'Finalmodel' in clean:
     dirs = ['Finalmodel']
     files = ['Overview.png']
-
+    remove_these(maindir,list_subfolders_with_paths,dirs,files)
+    
 if 'Sofia_Output' in clean:
     dirs = ['Sofia_Output']
     files = ['']
+    remove_these(maindir,list_subfolders_with_paths,dirs,files) 

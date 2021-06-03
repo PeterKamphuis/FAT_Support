@@ -1,7 +1,7 @@
 #!/usr/local/bin/ python3
 
 # This script is to compare the any FAT fitting directory and produce the plots of the Current_Status report.
-#Last processed is pyFAT V0.02
+#Last processed is pyFAT V0.0.3
 #The config file should be the only input required. The script assumes that the model/high resolution fit is in ModelInput.def
 #FATInput='/home/peter/FAT/Database/FAT_INPUT.config'
 #version = 'V2.0.1'
@@ -105,25 +105,45 @@ for i in range(len(dirname)):
             RCs[RCshape]['MODEL'] = {'RADIUS':radii, 'RC':vrot, 'DISTANCE': distance[0], 'STATUS': -1}
     beamarrange[i]= diameter_in_beams
     SNRarrange[i] = float(SNR)
+   
     if not results['OS'][results['DIRECTORY_NAME'].index(dirname[i])]:
         if os.path.isfile('Finalmodel/Finalmodel.def'):
             output_name = 'Finalmodel/Finalmodel.def'
             fitted[i] = 1
         else:
+            fitted[i]= 0
+            RCs[RCshape][dirname[i]] = {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': fitted[i]}
+            beamarrange[i]= diameter_in_beams
+            rcshapes[i] =RCshape
             continue
     else:
-        output_name = 'Finalmodel/Finalmodel.def'
+        output_name = 'One_Step_Convergence/One_Step_Convergence.def'
         fitted[i] = 2
+
+    if f"{dirname[i]}" == 'Mass5.0e+10-i42.0d15.0-12.0pa115w0.1-0.07-Flared-ba4SNR8.0bm10.0-10.0ch4.0-No_Arms-No_Bar-rm0.0':
+        print(output_name)
+        print(os.path.isfile('Finalmodel/Finalmodel.def'))
+    
+        
     try:
+  #  x = 0
+   # if x == 0:
+        print(os.getcwd()) 
         minbeamsizefat,beamsizefat,beamanglefat,noisefat,distancefat,numringsfat,radiifat,vrotfat,vrotfat_err,scaleheightfat,scaleheightfat_err,\
         sbrfat, sbrfat_err, incfat, incfat_err,pafat,pafat_err, RAfat,DECfat,vsysfat,dispfat,dispfat_err,vrot2fat,vrot2fat_err,scaleheight2fat \
         ,scaleheight2fat_err,sbr2fat, sbr2fat_err,inc2fat,inc2fat_err,pa2fat, pa2fat_err, \
         RA2fat,DEC2fat,vsys2fat,disp2fat,disp2fat_err,instdispfat,cfluxfat,cflux2fat = sf.load_tirific(output_name)
+        if f"{dirname[i]}" == 'Mass5.0e+10-i42.0d15.0-12.0pa115w0.1-0.07-Flared-ba4SNR8.0bm10.0-10.0ch4.0-No_Arms-No_Bar-rm0.0':
+            print(RAfat[0],RA)
+            
+        
         if float(RAfat[0]) < 0.:
-            print(RAfat)
+            #print(RAfat)
             RAfat[0] = float(RAfat[0])+360.
-            print(RAfat)
-            exit()
+            #print(RAfat)
+            #print("Are we doing shit like this")
+
+            #exit()
         if float(RA2fat[0]) < 0.:
             RA2fat[0] = float(RA2fat[0])+360.
 
@@ -140,9 +160,9 @@ for i in range(len(dirname)):
             incfat_err[illegit] = 0.
             pafat[illegit] = 0.
             pafat_err[illegit] = 0.
-            RAfat[illegit] = 0.
-            DECfat[illegit] = 0.
-            vsysfat[illegit] = 0.
+            #RAfat[illegit] = 0.
+            #DECfat[illegit] = 0.
+            #vsysfat[illegit] = 0.
             dispfat[illegit] = 0.
             dispfat_err[illegit] = 0.
         illegit2 =np.where(sbr2fat < 1e-8)[0]
@@ -158,20 +178,24 @@ for i in range(len(dirname)):
             inc2fat_err[illegit2] = 0.
             pa2fat[illegit2] = 0.
             pa2fat_err[illegit2] = 0.
-            RA2fat[illegit2] = 0.
-            DEC2fat[illegit2] = 0.
-            vsys2fat[illegit2] = 0.
+            #RA2fat[illegit2] = 0.
+            #DEC2fat[illegit2] = 0.
+            #vsys2fat[illegit2] = 0.
             disp2fat[illegit2] = 0.
             disp2fat_err[illegit2] = 0.
 
             # temporary sol for mix up in
-
-    except:
+        #if f"{dirname[i]}" == 'Mass5.0e+10-i42.0d15.0-12.0pa115w0.1-0.07-Flared-ba4SNR8.0bm10.0-10.0ch4.0-No_Arms-No_Bar-rm0.0':
+        #    print(RAfat[0],DECfat[0],vsysfat[0])
+        #    exit()
+    except Exception as e:
+        print(e)
+        exit()
         fitted[i]= 0
         RCs[RCshape][dirname[i]] = {'RADIUS':[], 'RC':[], 'DISTANCE': [], 'STATUS': fitted[i]}
         beamarrange[i]= diameter_in_beams
         rcshapes[i] =RCshape
-        continue
+      
 
     # temporary sol for mix up in ModelInput
     if RCshape == 'NGC_3198':
