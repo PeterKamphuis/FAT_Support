@@ -8,10 +8,10 @@ import numpy as np
 
 
 
-#maindir= '/home/peter/FAT/LVHIS-26'
-maindir= '/home/peter/FAT/Database'
-#cat = 'Data_LVHIS.txt'
-cat = 'Output_Summary.txt'
+maindir= '/home/peter/FAT/LVHIS-26'
+#maindir= '/home/peter/FAT/Database'
+cat = 'Data_LVHIS.txt'
+#cat = 'Output_Summary.txt'
 clean = ['One_Step','Old_pyFAT', 'GDL','Finalmodel','Sofia_Output' ]
 #clean = ['GDL']
 
@@ -40,11 +40,12 @@ def catalogue(filename, debug = False):
 def remove_these(maindir,list,dirs,files):
     for subs in list:
         for dir in dirs:
-            try:
-                print(f"removing {subs}/{dir}")
-                shutil.rmtree(f"{subs}/{dir}")
-            except:
-                pass
+            if dir != './' and dir != '../' and dir != '':
+                try:
+                    print(f"removing {subs}/{dir}")
+                    shutil.rmtree(f"{subs}/{dir}")
+                except:
+                    pass
         for file in files:
             if '*' in file:
                 list_files = glob.glob(f"{subs}/{file}")
@@ -68,15 +69,15 @@ except KeyError:
     list_subfolders_with_paths = [f"{maindir}/{x}" for x in input_cat['DIRECTORYNAME']]
 
 if 'One_Step' in clean:
-    dirs = ['Logs','One_Step_Convergence']
-    files = ['Overview_Prev.png','*_FAT-Basic_Info.txt','*_FAT.fits']
+    dirs = ['Logs','Fit_Tirific_OSC']
+    files = ['*_FAT-Basic_Info.txt','*_FAT.fits','Fit_Tirific_In.def']
     remove_these(maindir,list_subfolders_with_paths,dirs,files)
 
 
 
 if 'Old_pyFAT' in clean:
-    dirs = ['Logs','Centre_Convergence','Extend_Convergence','Sofia_Output']
-    files = ['Overview_Prev.png','*_FAT-Basic_Info.txt','*_FAT.fits']
+    dirs = ['Logs','Centre_Convergence','Extend_Convergence','Sofia_Output','One_Step_Convergence']
+    files = ['Overview_Prev.png','*_FAT-Basic_Info.txt','*_FAT.fits','One_Step_Convergence_In.def']
     remove_these(maindir,list_subfolders_with_paths,dirs,files)
 
 if 'GDL' in clean:
