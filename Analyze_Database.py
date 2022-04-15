@@ -135,10 +135,14 @@ for i in range(len(dirname)):
         sbrfat, sbrfat_err, incfat, incfat_err,pafat,pafat_err, RAfat,DECfat,vsysfat,dispfat,dispfat_err,vrot2fat,vrot2fat_err,scaleheight2fat \
         ,scaleheight2fat_err,sbr2fat, sbr2fat_err,inc2fat,inc2fat_err,pa2fat, pa2fat_err, \
         RA2fat,DEC2fat,vsys2fat,disp2fat,disp2fat_err,instdispfat,cfluxfat,cflux2fat = sf.load_tirific(output_name)
+<<<<<<< HEAD
+        if dirname[i] == 'NGC_5204'
+=======
         if f"{dirname[i]}" == 'Mass5.0e+10-i42.0d15.0-12.0pa115w0.1-0.07-Flared-ba4SNR8.0bm10.0-10.0ch4.0-No_Arms-No_Bar-rm0.0':
             print(RAfat[0],RA)
             
         
+>>>>>>> 1aca4a7830b3ce5cba961018bd4c3b2645cbb284
         if float(RAfat[0]) < 0.:
             #print(RAfat)
             RAfat[0] = float(RAfat[0])+360.
