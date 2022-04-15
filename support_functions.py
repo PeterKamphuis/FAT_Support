@@ -113,7 +113,7 @@ def load_OS_output_catalogue(filename, debug = False):
         for line in file.readlines():
             vals = [x.strip() for x in line.split()]
             Results[columns[0]].append(vals[0])
-            Results[columns[1]].append(bool(vals[1]))
+            Results[columns[1]].append(bool(vals[1] == 'True'))
             Results[columns[2]].append(f'{" ".join(vals[2:])}')
     return Results
 
@@ -319,8 +319,8 @@ def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR
 {'':8s}{Variables}
 ''',None,screen=True, debug = True)
     Variables = np.array([e.upper() for e in Variables],dtype=str)
-
-    tmp = open(filename, 'r')
+    print(f"{os.getcwd()}/{filename}")
+    tmp = open(f"{os.getcwd()}/{filename}", 'r')
 
     numrings = [int(e.split('=')[1].strip()) for e in tmp.readlines() if e.split('=')[0].strip().upper() == 'NUR']
     tmp.seek(0)
