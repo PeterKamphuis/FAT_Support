@@ -7,8 +7,8 @@
 #version = 'V2.0.1'
 
 
-FATInput='/home/peter/FAT/Database_pyFAT_v0.0.2/pyFAT_INPUT.config'
-version = 'V0.0.2'
+FAT_Dir='/home/peter/FAT/Database_pyFAT_v0.0.8/'
+version = 'v0.0.8'
 
 import os
 import numpy as np
@@ -35,20 +35,21 @@ start_time = time.time()
 # First we get the catalogue of fitted galaxies
 
 
-Template_in = sf.load_config_file(FATInput)
-filefound = Template_in['CATALOGUE']
-catalogue =sf.load_catalogue(filefound)
-start = Template_in['STARTGALAXY']
+#Template_in = sf.load_config_file(FATInput)
+#filefound = Template_in['CATALOGUE']
+#catalogue =sf.load_catalogue(filefound)
+catalogue =sf.load_catalogue(f'{FAT_Dir}Output_Summary.txt')
+#start = Template_in['STARTGALAXY']
+start=-1
 if start < 0.:
     start = 0
-if Template_in['ENDGALAXY'] == -1:
-    end = len(catalogue['NUMBER'])-1
-    if end == 0:
-        end = 1
-end = Template_in['ENDGALAXY']
+end = len(catalogue['ID'])-1
+if end == 0:
+    end = 1
+
 dirname=catalogue['DIRECTORYNAME']
 
-results = sf.load_OS_output_catalogue(Template_in['OUTPUTCATALOGUE'])
+results = sf.load_OS_output_catalogue(f'{FAT_Dir}pyFAT_results.txt')
 fitted = np.zeros((len(dirname)))
 incval =np.zeros((len(dirname),2))
 #paval = [[[],[]],[[],[]]]
@@ -87,7 +88,7 @@ for i in range(len(dirname)):
 
 
     #os.chdir('/data/users/kamphuis/Artificial/'+dirname[i])
-    os.chdir(f"{Template_in['MAINDIR']}{dirname[i]}")
+    os.chdir(f"{FAT_Dir}{dirname[i]}")
 	# First we read the Model def file
     #print(dirname[i].split('bm')[1].split('-')[0])
 
@@ -117,7 +118,8 @@ for i in range(len(dirname)):
             rcshapes[i] =RCshape
             continue
     else:
-        output_name = 'One_Step_Convergence/One_Step_Convergence.def'
+        #output_name = 'One_Step_Convergence/One_Step_Convergence.def'
+        output_name = 'Fit_Tirific_OSC/Fit_Tirific_OSC.def'
         fitted[i] = 2
 
     if f"{dirname[i]}" == 'Mass5.0e+10-i42.0d15.0-12.0pa115w0.1-0.07-Flared-ba4SNR8.0bm10.0-10.0ch4.0-No_Arms-No_Bar-rm0.0':
@@ -290,11 +292,11 @@ for i in range(len(dirname)):
     pixperbeam = beamarea/(abs(cube_in[0].header['CDELT1'])*abs(cube_in[0].header['CDELT2']))
     try:
         mask =  fits.open('mask.fits',uint = False, do_not_scale_image_data=True,ignore_blank = True)
-        totalflux = np.sum(cube_in[0].data[mask[0].data > 0.5])/pixperbeam*cube_in[0].header["CDELT3"]/1000.
+        totalflux = np.sum(cube_in[0].data[mask[0].data > 0.5])/pixperbeam*ch_width
     except:
         #totalflux = sf.get_flux_from_info(dirname[i])
         try:
-            mom0= fits.open('Finalmodel/Finalmodel_mom0.fits')
+            mom0= fits.open('Sofia_Output/Convolved_Cube_FAT_mom0.fits')
         except:
             try:
                 mom0= fits.open('Moments/Convolved_Cube_preprocessed_mom0.fits')
@@ -314,7 +316,9 @@ for i in range(len(dirname)):
         mom0_fat= fits.open('Moments/Finalmodel_mom0.fits')
     totalflux_fat = np.sum(mom0_fat[0].data)/pixperbeam
     sbrval[i,:] = [totalflux-totalflux_fat,totalflux/100.]
-
+    if RCshape == 'Circinus':
+        print('!!!!!!!!!!!!!!!!!!!!!!!The fluxes for circinus!!!!!!!!!!!!')
+        print(totalflux-totalflux_fat,totalflux,totalflux_fat,pixperbeam, np.sum(cube_in[0].data[mask[0].data > 0.5])*cube_in[0].header["CDELT3"]/1000.,np.sum(mom0_fat[0].data))
     # next up evaluate the rotation curve we do this from 1 beam out to the maximum radius of the shortest fit
     evalrad=copy.deepcopy(radiifat)
     #Apparently there are 0's among the errors
@@ -354,7 +358,7 @@ for i in range(len(dirname)):
     vsysval[i,:]= [(vsys[0]-vsysfat[0])/ch_width,0.1]
     #print(cube_in[0].header["CDELT3"])
 
-    os.chdir(f"{Template_in['MAINDIR']}")
+    os.chdir(f"{FAT_Dir}")
 
 labelfont= {'family':'Times New Roman',
             'weight':'normal',
