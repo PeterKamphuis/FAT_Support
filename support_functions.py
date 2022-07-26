@@ -1143,11 +1143,17 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                                 second = output_parameters[f'{key}_2'], second_model = model_parameters[f'{key}_2'],
                                 second_errors = output_parameters[f'{key}_2_ERR'] ))
                     else:
-                        deltas[key].append(get_diff(output_parameters[key],model_parameters[key],\
-                            radii = output_parameters['RADI'], model_radii= model_parameters['RADI'],
-                            errors =  output_parameters[f'{key}_ERR'],norm = normalisation,
-                            second = output_parameters[f'{key}_2'], second_model = model_parameters[f'{key}_2'],
-                            second_errors = output_parameters[f'{key}_2_ERR'] ))
+                        if np.sum(model_parameters[f'{key}']) == 0.:
+                            if key not in ['Z0','Z0_2','SBR','SBR_2','SDIS','SDIS_2']:
+                                raise ModelError(f'We did not find model parameters for {key} in {model}')
+                            else:
+                                deltas[key].append([float('NaN'),float('NaN')])
+                        else:
+                            deltas[key].append(get_diff(output_parameters[key],model_parameters[key],\
+                                radii = output_parameters['RADI'], model_radii= model_parameters['RADI'],
+                                errors =  output_parameters[f'{key}_ERR'],norm = normalisation,
+                                second = output_parameters[f'{key}_2'], second_model = model_parameters[f'{key}_2'],
+                                second_errors = output_parameters[f'{key}_2_ERR'] ))
 
                     print(f'For {key} in {galaxy} we find a difference between mod and fit {deltas[key][-1]}')
         # We also need the flux difference
