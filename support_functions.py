@@ -576,19 +576,14 @@ def get_name_info(name):
         beam=float(name.split('ba')[1].split('SNR')[0])
         RCShape = name.split('-')[0]
     except:
-        if name[0] == 'C':
-            RCShape= name.split('_')[0]
-            beam =float(name.split('_')[1].split('Beams')[0])
-        else:
-            RCShape= name.split('_')[0]+'_'+ name.split('_')[1]
-            beam =float(name.split('_')[2].split('Beams')[0])
+        in_front = name.split('Beams')[0]
+        individual = in_front.split('_')
+        beam = float(individual[-1])
+        RCShape = "_".join([x for x in individual[:-1]])
     try:
         SNR=float(name.split('SNR')[1].split('bm')[0])
     except:
-        if name[0] == 'C':
-            SNR =float(name.split('_')[2].split('SNR')[0])
-        else:
-            SNR =float(name.split('_')[3].split('SNR')[0])
+        SNR =float(name.split('_')[-1].split('SNR')[0])
     return [beam],SNR,RCShape
 
 def  get_LVHIS_average_flux(directory):
