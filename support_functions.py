@@ -146,7 +146,7 @@ distance = {float(RCs[key][indi]['DISTANCE'][0])}''')
                     ax.plot(kpcradii, RCs[key][indi]['RC'], 'ro',zorder=2)
             else:
                 if len(kpcradii) > len(RCs[key][indi]['RC']):
-                    kpcradii=kpcradii[:len(RCs[key][indi]['RC')]
+                    kpcradii=kpcradii[:len(RCs[key][indi]['RC'])]
                 if RCs[key][indi]['STATUS'] == 0:
                     failed += 1
                 elif RCs[key][indi]['STATUS'] == 1:
