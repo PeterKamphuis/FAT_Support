@@ -1027,8 +1027,10 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                 diameter_in_beams.append(float(model_parameters['RADI_2'][-1])/float(model_parameters['BMAJ'][0])*2.)
             else:
                 diameter_in_beams.append(float(model_parameters['RADI'][-1])/float(model_parameters['BMAJ'][0])*2.)
-
-            SNR = average_flux[0]/output_parameters['RMS']
+            if not np.isnan(average_flux[0]):
+                SNR = average_flux[0]/output_parameters['RMS']
+            else:
+                SNR = -1.
             RCshape = LVHIS_Names[galaxy]
         else:
             diameter_in_beams, SNR, RCshape = get_name_info(galaxy)
