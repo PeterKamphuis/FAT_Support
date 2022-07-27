@@ -434,12 +434,13 @@ def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= No
         symlist = ["o", "v", "^", "<",">","s","P","*","X","D","1","3"]
         alphabet = [f"${x}$" for x in map(chr,range(97,123))]
         symlist = symlist+alphabet
-        while len(req_no_elements) > len(symlist):
-            symlist=symlist+symlist
+
 
         if not symbol is None:
             symbol= np.array(symbol)
             req_no_elements = np.unique(symbol)
+            while len(req_no_elements) > len(symlist):
+                symlist=symlist+symlist
             symbol_use = [symlist[i] for i,shape in enumerate(req_no_elements)]
         else:
             req_no_elements = ['Unspecified']
