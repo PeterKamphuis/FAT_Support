@@ -1062,8 +1062,9 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                 corruption = 'Unspecified'
         else:
             corruption = 'Unspecified'
-        hdr = fits.getheader(f'{database_config["MAIN_DIRECTORY"]}{galaxy}/{cubename}')
-        channel_width = hdr['CDELT3']/1000.
+        if status > 0:
+            hdr = fits.getheader(f'{database_config["MAIN_DIRECTORY"]}{galaxy}/{cubename}')
+            channel_width = hdr['CDELT3']/1000.
         #and then calculate the deltas
         if LVHIS:
             input_models = ['ROTCUR','DISKFIT']
@@ -1120,7 +1121,6 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                         normalisation = hdr['BMAJ']
                     else:
                         normalisation = 1.
-                    print(model)
                     if model =='ROTCUR':
                         if np.sum(model_parameters[f'{key}']) == 0.:
                             if key not in ['Z0','Z0_2','SBR','SBR_2','SDIS','SDIS_2']:
