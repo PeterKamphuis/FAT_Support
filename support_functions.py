@@ -111,6 +111,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
     else:
         linew = 1
     for i,key in enumerate(RCs):
+
         print(f'Plotting the galaxy RC shape {key}')
         ax = plt.subplot(gs[i])
         ax.tick_params(
@@ -123,55 +124,75 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
         right = True,
         left= True,
         labelleft = True)
+        for axis in ['top','bottom','left','right']:
+            ax.spines[axis].set_linewidth(4)
+
+            # increase tick width
+        ax.tick_params(width=4)
         failed = 0
         tot = 0
-        for indi in RCs[key]:
-            print(f'Plotting the actual galaxy {indi}')
+        plot = True
+        if LVHIS:
+            galaxy = [x for x in RCs[key] if x not in ['MODEL','MODEL_2']]
+            if RCs[key][galaxy[0]]['STATUS'] == 0.:
+                plot = False
+
+        if plot:
+            for indi in RCs[key]:
+
+                print(f'Plotting the actual galaxy {indi}')
 
 
-            if indi not in ['MODEL','MODEL_2']:
-                tot += 1
-            kpcradii = np.array(convertskyangle({'OUTPUTLOG': None},RCs[key][indi]['RADIUS'],distance=float(RCs[key][indi]['DISTANCE'][0])))
-            print(f''' Plotting the RC {RCs[key][indi]['RC']} with:
-radi (arcsec) = {RCs[key][indi]['RADIUS']}
-radi (kpc) = {kpcradii}
-distance = {float(RCs[key][indi]['DISTANCE'][0])}''')
-            if indi == 'MODEL':
-                ax.plot(kpcradii, RCs[key][indi]['RC'], 'b',zorder= 2)
-                ax.plot(kpcradii, RCs[key][indi]['RC'], 'bo',zorder=2)
-            elif indi == 'MODEL_2':
-                #print(np.isnan(np.array(RCs[key][indi]['RC'],dtype=float)),all(np.isnan(np.array(RCs[key][indi]['RC'],dtype=float))))
-                if not np.sum(RCs[key][indi]['RC']) == 0.:
-                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'r',zorder= 2)
-                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'ro',zorder=2)
-            else:
-                if len(kpcradii) > len(RCs[key][indi]['RC']):
-                    kpcradii=kpcradii[:len(RCs[key][indi]['RC'])]
-                if RCs[key][indi]['STATUS'] == 0:
-                    failed += 1
-                elif RCs[key][indi]['STATUS'] == 1:
-                    #ymin, ymax = ax.get_ylim()
-                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'k--',zorder= 1,linewidth=linew, alpha =0.5)
-                    if LVHIS:
-                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
-                    #ax.set_ylim(ymin,ymax)
+                if indi not in ['MODEL','MODEL_2']:
+                    tot += 1
+                kpcradii = np.array(convertskyangle({'OUTPUTLOG': None},RCs[key][indi]['RADIUS'],distance=float(RCs[key][indi]['DISTANCE'][0])))
+                print(f''' Plotting the RC {RCs[key][indi]['RC']} with:
+    radi (arcsec) = {RCs[key][indi]['RADIUS']}
+    radi (kpc) = {kpcradii}
+    distance = {float(RCs[key][indi]['DISTANCE'][0])}''')
+                if RCs[key][indi]['DISTANCE'][0] < 1:
+                    exit()
+                if indi == 'MODEL':
+                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'b',zorder= 2)
+                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'bo',zorder=2)
+                elif indi == 'MODEL_2':
+                    #print(np.isnan(np.array(RCs[key][indi]['RC'],dtype=float)),all(np.isnan(np.array(RCs[key][indi]['RC'],dtype=float))))
+                    if not np.sum(RCs[key][indi]['RC']) == 0.:
+                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'r',zorder= 2)
+                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'ro',zorder=2)
                 else:
-                    ax.plot(kpcradii, RCs[key][indi]['RC'], 'k',zorder= 1 ,linewidth=linew, alpha =0.75)
-                    if LVHIS:
-                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1 ,linewidth=linew, alpha =0.75)
-        ax.set_xlabel('Radius (kpc)', **labelfont)
-        ax.set_ylabel('V$_{rot}$ (km s$^{-1}$)', **labelfont)
+                    if len(kpcradii) > len(RCs[key][indi]['RC']):
+                        kpcradii=kpcradii[:len(RCs[key][indi]['RC'])]
+                    if RCs[key][indi]['STATUS'] == 0:
+                        failed += 1
+                    elif RCs[key][indi]['STATUS'] == 1:
+                        #ymin, ymax = ax.get_ylim()
+                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'k--',zorder= 1,linewidth=linew, alpha =0.5)
+                        if LVHIS:
+                            ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
+                        #ax.set_ylim(ymin,ymax)
+                    else:
+                        ax.plot(kpcradii, RCs[key][indi]['RC'], 'k',zorder= 1 ,linewidth=linew, alpha =0.75)
+                        if LVHIS:
+                            ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1 ,linewidth=linew, alpha =0.75)
+            ax.set_xlabel('Radius (kpc)', **labelfont)
+            ax.set_ylabel('V$_{rot}$ (km s$^{-1}$)', **labelfont)
+            if RCs[key][indi]['STATUS'] == 1 and LVHIS:
+                print(f"Trying a marker")
+                ax.scatter(0.95,0.95,marker='*',color='k', s=237,transform=ax.transAxes)
+        else:
+            ax.text(0.5,0.5,f'This galaxy failed to fit ', transform=ax.transAxes,horizontalalignment= 'center', verticalalignment='top')
+            ax.axis('off')
+
         ax.set_title(key)
 
         ymin, ymax = ax.get_ylim()
         ax.set_ylim(ymin,ymax+(ymax-ymin)/10.)
         if not LVHIS:
             ax.text(0.95,0.95,f'Out of {tot} galaxies, {failed} failed to fit. ', transform=ax.transAxes,horizontalalignment= 'right', verticalalignment='top')
-        else:
 
-            if RCs[key][indi]['STATUS'] == 1:
-                print(f"Trying a marker")
-                ax.scatter(0.95,0.95,marker='*',color='k', s=137,transform=ax.transAxes)
+
+
     if LVHIS:
         version= 'LVHIS'
     else:
@@ -232,12 +253,7 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                         'WINDOW_3': {'LOCATION': 4,
                                      'X': [deltas['R_HI'], r'$\Delta$ R$_{\rm HI}$  (beams)'],
                                      'Y': [deltas['INCL'],r'$\Delta$ $i$ ($^{\circ}$)'],
-                                      'NO_MEAN': True,
-                                      'PATCH': Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['R_HI']])),\
-                                                         np.nanmean(np.array([x[0] for x in deltas['INCL']]))],\
-                                                width=np.nanstd(np.array([x[0] for x in deltas['R_HI']])) ,\
-                                                height=np.nanstd(np.array([x[0] for x in deltas['INCL']])), angle=0,\
-                                             edgecolor='k', alpha=0., lw=6, facecolor=None, hatch = '//', zorder=-1)
+
                                      },
                         'WINDOW_4': {'LOCATION': 6,
                                      'X': [deltas['SNR'], 'SNR'],
@@ -263,12 +279,20 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
         #First the RA and DEC
         #RAval = np.array(RAval,dtype=float)
         #DECval = np.array(DECval,dtype=float)
+        #if LVHIS:
+        #    coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
+        #
+        #else:
+        coloring = deltas['CENTRAL_INPUT_INCLINATION']
+        coloring_scale=[0.,90.]
+        colorbarlabel = 'Inclination'
         if LVHIS:
-            coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
+            symbol = deltas['INPUT_MODEL']
+            symbol_string= 'Compared to '
 
         else:
-            coloring = deltas['CENTRAL_INPUT_INCLINATION']
-            colorbarlabel = 'Inclination'
+            symbol =deltas['CORRUPTION']
+            symbol_string= 'Corrupted with: '
         for i,key in enumerate(plot_assembly[plot]):
             if 'NO_MEAN' in plot_assembly[plot][key]:
                 nomean = plot_assembly[plot][key]['NO_MEAN']
@@ -279,8 +303,14 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                            xlabel = plot_assembly[plot][key]['X'][1],\
                            ylabel = plot_assembly[plot][key]['Y'][1],\
                            location = gs[plot_assembly[plot][key]['LOCATION']],\
-                           color=coloring,status=deltas['STATUS'],\
-                           symbol=deltas['RCSHAPE'],No_Mean = nomean,corruption=deltas['CORRUPTION'])
+                           color=coloring,color_scale= coloring_scale,status =deltas['STATUS'], \
+                           symbol=symbol,symbol_string= symbol_string\
+                           ,No_Mean = nomean,size=deltas['STATUS'], size_string = 'Status =  ')
+            for axis in ['top','bottom','left','right']:
+                ax.spines[axis].set_linewidth(4)
+
+                    # increase tick width
+                ax.tick_params(width=4)
             if 'PATCH' in plot_assembly[plot][key]:
                 ax.add_patch( plot_assembly[plot][key]['PATCH'])
             if i == 1:
@@ -309,17 +339,15 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
         #make a color bar
         ax = plt.subplot(gs[5])
         #Make a color bar for the inlination
-        a = np.array([[0,90.]])
-        img = plt.imshow(a, cmap="rainbow")
+
+        img = plt.imshow(np.array([coloring_scale]), cmap="rainbow")
         plt.gca().set_visible(False)
         cax = plt.axes([0.63, 0.4, 0.01, 0.45])
         barr = plt.colorbar(orientation="vertical", cax=cax)
-        if LVHIS:
-            barr.set_ticks([0, 90.])
-            barr.ax.set_yticklabels(['ROTCUR', 'DISKFIT'],rotation=90,va = 'center')
 
-        else:
-            barr.set_label('Inclination', rotation=270, verticalalignment='bottom')
+        #barr.set_ticks([np.nanmin(coloring), np.max()])
+
+        barr.set_label('Inclination', rotation=270, verticalalignment='bottom')
 
 
         labelfont= {'family':'Times New Roman',
@@ -350,8 +378,9 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
 
 
 
-def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= None,
-                    xlabel = '',ylabel = '', No_Mean = False, corruption = None):
+def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_string= '',
+                    xlabel = '',ylabel = '', No_Mean = False, size = None,color_scale= [0.,1.],
+                    size_string= '',color=None):
         try:
             x = np.array([v[0] for v in x_in], dtype=float)
             x_err = np.array([v[1] for v in x_in], dtype=float)
@@ -371,19 +400,6 @@ def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= No
         except IndexError:
             y = np.array([v for v in y_in], dtype=float)
             y_err = np.array([0. for v in y_in], dtype=float)
-
-        ax = plt.subplot(location)
-        ax.tick_params(
-        axis='both',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        direction = 'in',
-        bottom=True,      # ticks along the bottom edge are off
-        top=True,         # ticks along the top edge are off
-        labelbottom=True,
-        right = True,
-        left= True,
-        labelleft = True)
-
         if not status is None:
             status = np.array(status)
 
@@ -398,38 +414,52 @@ def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= No
                 norm_elements = norm_elements+0.1*(np.max(norm_elements)+0.01*np.max(norm_elements))
                 max = np.max(norm_elements)
             norm_elements = norm_elements/max
-            transparency = np.array(copy.deepcopy(status),dtype=float)
+            transparency = copy.deepcopy(status)
             for i,els in enumerate(stat_elements):
                 transparency[status == els] = norm_elements[i]
             transparency = np.array(transparency,dtype = float)
-
         else:
             stat_elements = np.array([0.])
             norm_elements = [1]
             mean = np.nanmean(y[:])
             stdev = np.nanstd(y[:]-mean)
             transparency =np.ones(len(x[:]))
+        ax = plt.subplot(location)
+        ax.tick_params(
+        axis='both',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        direction = 'in',
+        bottom=True,      # ticks along the bottom edge are off
+        top=True,         # ticks along the top edge are off
+        labelbottom=True,
+        right = True,
+        left= True,
+        labelleft = True)
 
-        if not corruption is None:
-            corruption_types = np.unique(corruption)
-            numerical_corruption= [x for x in range(len(corruption_types))]
-            corruption_size = copy.deepcopy(corruption)
-            for i,c_type in enumerate(corruption_types):
-                corruption_size = [numerical_corruption[i] if x == c_type else x for x in corruption_size]
-            corruption_size = np.array(corruption_size,dtype=float)
-            corruption = np.array(corruption)
+
+
+        if not size is None:
+            size_types = np.unique(size)
+            numerical_size= [x for x in range(len(size_types))]
+            size_size = copy.deepcopy(size)
+            for i,c_type in enumerate(size_types):
+                size_size = [numerical_size[i] if x == c_type else x for x in size_size]
+            size_size = np.array(size_size,dtype=float)
+            size = np.array(size)
             size_legend_items= []
-            if len(numerical_corruption) > 1:
-                sizes = (np.array(numerical_corruption,dtype=float)+4)**3.
+            if len(numerical_size) > 1:
+                sizes = (np.array(numerical_size,dtype=float)+4)**3.
                 for i,siz in enumerate(sizes):
-                    lab_string = f'Corrupted with {corruption_types[i]}'
-                    tmp_fig = plt.figure(1,figsize=(1,1),dpi=30,facecolor = 'w', edgecolor = 'k')
-                    tmp_plot = plt.scatter([0,1],[0,1], c = 'k', s=siz, marker = 'o',label = lab_string)
-                    size_legend_items.append(tmp_plot)
-                    plt.close(tmp_fig)
+
+                    if siz != 4**3:
+                        lab_string = f'{size_string}{size_types[i]}'
+                        tmp_fig = plt.figure(1,figsize=(1,1),dpi=30,facecolor = 'w', edgecolor = 'k')
+                        tmp_plot = plt.scatter([0,1],[0,1], c = 'k', s=siz, marker = 'o',label = lab_string)
+                        size_legend_items.append(tmp_plot)
+                        plt.close(tmp_fig)
 
         else:
-            corruption_size = np.zeros(len(x[:]))
+            size_size = np.zeros(len(x[:]))
 
         symlist = ["o", "v", "^", "<",">","s","P","*","X","D","1","3"]
         alphabet = [f"${x}$" for x in map(chr,range(97,123))]
@@ -448,7 +478,7 @@ def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= No
             symbol_use = ['o']
         if not color is None:
             color = np.array(color,dtype=float)
-            color = color/90.
+            color = color/(np.nanmax(color_scale))-np.nanmin(color_scale)
             cmap = plt.cm.get_cmap('rainbow')
             rgba_cols = [cmap(color)]
 
@@ -457,27 +487,24 @@ def make_plot(x_in,y_in, color= None, status= None, location = [0,1], symbol= No
         shape_legend_items = []
         proc_lab_string = []
         for i,shaped in enumerate(req_no_elements):
-            proc = np.where(symbol == shaped)[0]
+                proc = np.where(symbol == shaped)[0]
 
-            for j,transparency_val in enumerate(norm_elements):
 
-                add = np.where(transparency[proc] == transparency_val)[0]
-
-                if len(add) > 0:
-                    lab_string = f'RC Shape {shaped}'
+                if len(proc) > 0:
+                    lab_string = f'{symbol_string}{shaped}'
                     if lab_string not in proc_lab_string:
                         tmp_fig = plt.figure(1,figsize=(2,2),dpi=30,facecolor = 'w', edgecolor = 'k')
-                        tmp_plot = plt.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = 'k', s=4**3, marker = symbol_use[i],alpha = 1,label = lab_string)
+                        tmp_plot = plt.scatter(x[proc],y[proc],cmap= 'rainbow', c = 'k', s=4**3, marker = symbol_use[i],alpha = 1,label = lab_string)
                         shape_legend_items.append(tmp_plot)
                         proc_lab_string.append(lab_string)
                         plt.close(tmp_fig)
-                    siz = (corruption_size[proc[add]]+4)**3.
-
+                    siz = (size_size[proc]+4)**3.
                     #try:
                     #ax.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = rgba_cols[0][proc[add]][:], s=2**4, marker = symbol_use[i],alpha = 1,label = lab_string)
-                    ax.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = rgba_cols[0][proc[add]][:], s=siz, marker = symbol_use[i],alpha = norm_elements[j])
 
-                    plt.errorbar(x[proc[add]],y[proc[add]],xerr=x_err[proc[add]],yerr=y_err[proc[add]], linestyle="None", ecolor = rgba_cols[0][proc[add]][:],alpha = norm_elements[j])
+                    ax.scatter(x[proc],y[proc],cmap= 'rainbow', c = rgba_cols[0][proc][:], s=siz, marker = symbol_use[i])
+
+                    plt.errorbar(x[proc],y[proc],xerr=x_err[proc],yerr=y_err[proc], linestyle="None", ecolor = rgba_cols[0][proc][:])
                     #except:
                     #    ax.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = rgba_cols[0][proc[add]][:], s=siz, marker = symbol_use[i],alpha = norm_elements[j],label = lab_string)
                     #    plt.errorbar(x[proc[add]],y[proc[add]],xerr=np.zeros(len(add)),yerr=y[proc[add],1], linestyle="None", ecolor = rgba_cols[0][proc[add]][:],alpha = norm_elements[j])
@@ -993,6 +1020,9 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
         else:
             if database_out_catalogue['OS'][i]:
                 status = 2
+            else:
+                if os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def'):
+                    status =1
 
         # First read the the input model Class
 
@@ -1020,7 +1050,8 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
             distance=[model_parameters['VSYS'][0]/69.7] #km/s/Mpc
         if len(distance) == 0.:
             distance=[model_parameters['VSYS'][0]/69.7]
-
+        if distance[0] == 0.:
+            distance=[model_parameters['VSYS'][0]/69.7]
         #write our RCs to a variable
         # First read the the input model Class
         if LVHIS:
@@ -1088,6 +1119,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
             deltas['RCSHAPE'].append(RCshape)
             deltas['STATUS'].append(status)
             deltas['CENTRAL_INPUT_INCLINATION'].append(model_parameters[f'INCL{ext[j]}'][0])
+
             # First the delta in extend as it is slightly different
             deltas['MAX_EXTEND'].append(
                 get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
