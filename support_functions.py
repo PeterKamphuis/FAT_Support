@@ -1025,6 +1025,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
         else:
             print(f'''What on earth {database_out_catalogue['OS'][i]}''')
             if bool(database_out_catalogue['OS'][i]):
+                print(f'So why are we thinking it is true')
                 status = 2
             else:
                 if os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def'):
