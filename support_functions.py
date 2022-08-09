@@ -871,8 +871,10 @@ def load_config_file(filename, debug = False, old_style=False):
 #merge yml file with defaults
         cfg = OmegaConf.merge(cfg,yaml_config)
         # translate into our dictionary
-        Configuration = setup_configuration(cfg)
-        Configuration['INPUT_CATALOGUE'] = Configuration['CATALOGUE']
+        Configuration_ini = setup_configuration(cfg)
+
+        Configuration_ini['INPUT_CATALOGUE'] = Configuration_ini['CATALOGUE']
+        Configuration= Configuration_ini
         #print(Configuration['MAIN_DIRECTORY'],Configuration['INPUT_CATALOGUE'])
         #Configuration['INPUT_CATALOGUE']= f'''{Configuration['MAIN_DIRECTORY']}{Configuration['INPUT_CATALOGUE']}'''
 
