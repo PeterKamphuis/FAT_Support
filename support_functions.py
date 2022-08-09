@@ -1131,7 +1131,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                 deltas['MAX_EXTEND'].append(
                     get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
             else:
-                deltas['MAX_EXTEND'].append([float'NaN',float'NaN'])
+                deltas['MAX_EXTEND'].append([float('NaN'),float('NaN')])
             #for now leave R_HI
             deltas['TOTAL_FLUX'].append([total_flux[1]-total_flux[0], error_flux[1]+error_flux[0]])
             if model == 'TIRIFIC':
