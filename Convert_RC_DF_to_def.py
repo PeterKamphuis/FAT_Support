@@ -21,7 +21,7 @@ def main():
     #Fat in put list for galaxies to convert
     list_to_convert = 'Data_LVHIS.txt'
     GDL_list = True
-    main_directory = '/home/peter/FAT_Main/GDL_release_check/LVHIS-26_GDL_v2.0.1'
+    main_directory = '/home/peter/FAT/LVHIS-26'
 
 
     #first read in the list
