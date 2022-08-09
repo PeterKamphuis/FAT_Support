@@ -1024,8 +1024,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
                 status =2
         else:
             print(f'''What on earth {database_out_catalogue['OS'][i]}''')
-            if bool(database_out_catalogue['OS'][i]):
-                print(f'So why are we thinking it is true')
+            if str_to_bool(database_out_catalogue['OS'][i]):
                 status = 2
             else:
                 if os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def'):
@@ -1288,28 +1287,13 @@ def get_RHI(sbr_profile=[0.,0.],radi= [0.],systemic = 100.,distance=1.):
 
     return [DHI/2.,(radi[-1]-radi[-2])/10.]
 
-    #if np.sum(radi) == 0. or np.sum(sbr_profile) == 0.:
-    #    return  -1.
-    #First read the model radius from the info file
-    #for file in os.listdir(directory):
-    #    if file.endswith("-Info.txt"):
-    #        with open(f'{directory}/{file}') as Infofile:
-    #            info_lines = Infofile.readlines()
-    #        for line in info_lines:
-    #            values = [x.strip() for x in line.split()]
-    #            if values[0].lower() == 'distance':
-    #                distance = float(values[1])
-    #            if f'{values[0].lower()} {values[1].lower()}' == 'hi radius':
-    #                kpc_radius = float(values[2])
-    #model_kpc_arcsec = convertskyangle({'OUTPUTLOG': None, 'DISTANCE': distance},\
-    #                    kpc_radius, physical=True)
-#
-#    av_sbr = np.array([np.mean([x,y]) for x,y in zip(sbr_profile[0],sbr_profile[1])],dtype=float)
-#    M_solar_column=columndensity({'OUTPUTLOG': None, 'DISTANCE': distance},av_sbr,\
-#                systemic=systemic,arcsquare=True,solar_mass_output=True)
-#    start = np.where(M_solar_column < 1.)[0]
-#    if len(start) == 0.:
-#        radius =float('NaN')
-#    else:
-#        radius = radi[start[0]]
-#    return radius-model_kpc_arcsec
+#Really python bool(str) is always true
+def str_to_bool(inp):
+    if inp == "":
+        return False
+    elif inp.lower() == "true" or inp.lower() == "t" or inp.lower() == "y" or inp.lower() == "yes":
+        return True
+    elif inp.lower() == "false" or inp.lower() == "f" or inp.lower() == "n" or inp.lower() == "no":
+        return False
+    else:
+        print(f"Error: the input must be true/false or yes/no. {inp} is not a clear boolean")
