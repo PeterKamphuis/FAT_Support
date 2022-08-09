@@ -1127,8 +1127,11 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
             deltas['CENTRAL_INPUT_INCLINATION'].append(model_parameters[f'INCL{ext[j]}'][0])
 
             # First the delta in extend as it is slightly different
-            deltas['MAX_EXTEND'].append(
-                get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
+            if status > 0.:
+                deltas['MAX_EXTEND'].append(
+                    get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
+            else:
+                deltas['MAX_EXTEND'].append([float'NaN',float'NaN'])
             #for now leave R_HI
             deltas['TOTAL_FLUX'].append([total_flux[1]-total_flux[0], error_flux[1]+error_flux[0]])
             if model == 'TIRIFIC':
