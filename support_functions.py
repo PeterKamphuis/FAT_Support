@@ -11,7 +11,7 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from omegaconf import OmegaConf
 from pyFAT_astro.config.defaults import defaults
-from pyFAT_astro.Support.support_functions import convertskyangle,columndensity
+from pyFAT_astro.Support.support_functions import convertskyangle,columndensity,setup_configuration
 from pyFAT_astro.Support.fat_errors import BadCatalogueError
 import os
 import signal
@@ -169,7 +169,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
                         #ymin, ymax = ax.get_ylim()
                         ax.plot(kpcradii, RCs[key][indi]['RC'], 'k--',zorder= 1,linewidth=linew, alpha =0.5)
                         if LVHIS:
-                            ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
+                        Database_pyFAT_v0.0.9    ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
                         #ax.set_ylim(ymin,ymax)
                     else:
                         ax.plot(kpcradii, RCs[key][indi]['RC'], 'k',zorder= 1 ,linewidth=linew, alpha =0.75)
