@@ -1088,7 +1088,11 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
         else:
             vrot = output_parameters['VROT']
         RCs[RCshape][galaxy] = {'RADIUS':output_parameters['RADI'], 'RC':vrot, 'DISTANCE':distance, 'STATUS': status}
-        cubename = f'{database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)]}_preprocessed.fits'
+        if binary:
+            cubename = f'{database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)]}_preprocessed.fits'
+        else:
+            cubename = f'{database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)]}_FAT.fits'
+        
         tmp_corruption = database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)].split('_')
         if len(tmp_corruption) > 1:
             if tmp_corruption[-1] in ['CS', 'Gauss','UC']:
