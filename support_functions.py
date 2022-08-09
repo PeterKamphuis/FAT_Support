@@ -169,7 +169,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
                         #ymin, ymax = ax.get_ylim()
                         ax.plot(kpcradii, RCs[key][indi]['RC'], 'k--',zorder= 1,linewidth=linew, alpha =0.5)
                         if LVHIS:
-                        Database_pyFAT_v0.0.9    ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
+                            ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
                         #ax.set_ylim(ymin,ymax)
                     else:
                         ax.plot(kpcradii, RCs[key][indi]['RC'], 'k',zorder= 1 ,linewidth=linew, alpha =0.75)
