@@ -1130,23 +1130,25 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
             if status > 0.:
                 deltas['MAX_EXTEND'].append(
                     get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
+                if model == 'TIRIFIC':
+                    print(f'In the galaxy {galaxy}')
+                    model_RHI = get_RHI(sbr_profile=[model_parameters[f'SBR'],model_parameters[f'SBR_2']],\
+                                radi=model_parameters[f'RADI'],systemic=model_parameters[f'VSYS'][0],\
+                                distance=distance )
+                    fitted_RHI = get_RHI(sbr_profile=[output_parameters[f'SBR'],output_parameters[f'SBR_2']],\
+                                radi=output_parameters[f'RADI'],systemic=output_parameters[f'VSYS'][0],distance=distance )
+
+                    deltas['R_HI'].append([(model_RHI[0]-fitted_RHI[0])/(hdr['BMAJ']*3600.),\
+                                            (model_RHI[1]+fitted_RHI[1])/(hdr['BMAJ']*3600.)])
+
+                else:
+                    deltas['R_HI'].append(get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
+
             else:
                 deltas['MAX_EXTEND'].append([float('NaN'),float('NaN')])
+                deltas['R_HI'].append([float('NaN'),float('NaN')])
             #for now leave R_HI
             deltas['TOTAL_FLUX'].append([total_flux[1]-total_flux[0], error_flux[1]+error_flux[0]])
-            if model == 'TIRIFIC':
-                print(f'In the galaxy {galaxy}')
-                model_RHI = get_RHI(sbr_profile=[model_parameters[f'SBR'],model_parameters[f'SBR_2']],\
-                            radi=model_parameters[f'RADI'],systemic=model_parameters[f'VSYS'][0],\
-                            distance=distance )
-                fitted_RHI = get_RHI(sbr_profile=[output_parameters[f'SBR'],output_parameters[f'SBR_2']],\
-                            radi=output_parameters[f'RADI'],systemic=output_parameters[f'VSYS'][0],distance=distance )
-
-                deltas['R_HI'].append([(model_RHI[0]-fitted_RHI[0])/(hdr['BMAJ']*3600.),\
-                                        (model_RHI[1]+fitted_RHI[1])/(hdr['BMAJ']*3600.)])
-
-            else:
-                deltas['R_HI'].append(get_diff_rmax(model_parameters[f'RADI{ext[j]}'],output_parameters['RADI'],hdr['BMAJ']))
             for key in output_parameters:
                 print(f'Starting to check {key}')
                 if key[-1] == '2' or key == 'RADI' or \
