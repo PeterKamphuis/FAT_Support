@@ -872,6 +872,7 @@ def load_config_file(filename, debug = False, old_style=False):
         cfg = OmegaConf.merge(cfg,yaml_config)
         # translate into our dictionary
         Configuration = setup_configuration(cfg)
+        print(Configuration['MAIN_DIRECTORY'],Configuration['INPUT_CATALOGUE'])
         Configuration['INPUT_CATALOGUE']= f'{Configuration['MAIN_DIRECTORY']}{Configuration['INPUT_CATALOGUE']}'
         Configuration['OUTPUT_CATALOGUE']= f'{Configuration['MAIN_DIRECTORY']}{Configuration['OUTPUT_CATALOGUE']}'
 
