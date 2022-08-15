@@ -13,8 +13,8 @@ def main():
     Database_config_file = 'pyFAT_fit.yml'
 
     #First analyze the database.
-    sf.analyze(Database_Directory,Database_config_file, basename=f'pyFAT_{version}_Results')
-    #sf.analyze(LVHIS_Directory,LVHIS_config_file, basename=f'pyFAT_{version}_Results',LVHIS=True)
+    #sf.analyze(Database_Directory,Database_config_file, basename=f'pyFAT_{version}_Results')
+    sf.analyze(LVHIS_Directory,LVHIS_config_file, basename=f'pyFAT_{version}_Results',LVHIS=True)
 
 
 
