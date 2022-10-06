@@ -2,19 +2,30 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import support_functions as sf
-
+import matplotlib.font_manager as mpl_fm
 from astropy.io import fits
+import os
+
 def main():
     '''Analyze both the Database and LVHIS fits of the GDL runs.'''
-    version = 'v0.0.9'
-    LVHIS_Directory = f'/home/peter/FAT/LVHIS-26_pyFAT_{version}'
+    version = 'v0.1.0'
+
+    #mpl_fm.fontManager.addfont("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf")
+    mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
+
+    LVHIS_Directory = f'/home/pkamphuis/FAT/LVHIS-26/'
     LVHIS_config_file = 'FAT_defaults.yml'
-    Database_Directory = f'/home/peter/FAT/Database_pyFAT_{version}'
-    Database_config_file = 'pyFAT_fit.yml'
+    Database_config_file = 'FAT_defaults.yml'
+    Database_Directory = '/home/pkamphuis/FAT/Database/'
 
     #First analyze the database.
-    #sf.analyze(Database_Directory,Database_config_file, basename=f'pyFAT_{version}_Results')
-    sf.analyze(LVHIS_Directory,LVHIS_config_file, basename=f'pyFAT_{version}_Results',LVHIS=True)
+    deltas = sf.analyze(Database_Directory,Database_config_file, basename=f'pyFAT_{version}_Results')
+    deltas_LVHIS = sf.analyze(LVHIS_Directory,LVHIS_config_file, basename=f'pyFAT_{version}_Results',LVHIS=True)
+
+    if os.path.isfile(f'{Database_Directory}/Timing_Result.txt'):
+        sf.analyze_timing(Database_Directory,basename=f'pyFAT_{version}_Results', deltas = deltas)
+    if os.path.isfile(f'{LVHIS_Directory}/Timing_Result.txt'):
+        sf.analyze_timing(LVHIS_Directory,basename=f'pyFAT_{version}_Results', deltas = deltas_LVHIS)
 
 
 

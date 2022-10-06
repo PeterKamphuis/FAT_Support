@@ -3,6 +3,7 @@
 
 
 from collections import OrderedDict #used in Proper_Dictionary
+from datetime import datetime
 from inspect import getframeinfo,stack
 from scipy.optimize import curve_fit
 from scipy import ndimage
@@ -87,6 +88,7 @@ def analyze(Database_Directory,config_file, basename = 'Analysis_Output', LVHIS=
         os.system(f'''mkdir {database_config['MAIN_DIRECTORY']}/{basename}''')
     plot_overview(database_config,deltas,filename=f'''{database_config['MAIN_DIRECTORY']}/{basename}/Release_All''',LVHIS=LVHIS)
     plot_RCs(RCs,LVHIS=LVHIS,filename=f'''{database_config['MAIN_DIRECTORY']}/{basename}/RCs''')
+    return deltas
 
 
 def plot_RCs(RCs, filename='RCs',LVHIS =False):
@@ -181,7 +183,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
                 print(f"Trying a marker")
                 ax.scatter(0.95,0.95,marker='*',color='k', s=237,transform=ax.transAxes)
         else:
-            ax.text(0.5,0.5,f'This galaxy failed to fit ', transform=ax.transAxes,horizontalalignment= 'center', verticalalignment='top')
+            ax.text(0.5,0.5,f'The galaxy {key} failed to fit ', transform=ax.transAxes,horizontalalignment= 'center', verticalalignment='top')
             ax.axis('off')
 
         ax.set_title(key)
@@ -203,6 +205,231 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
     plt.close()
 
 
+def analyze_timing(Database_Directory, basename = 'Analysis_Output', deltas = None):
+    '''This function only works for the pyFAT runs not GDL runs'''
+    Individual_Times = read_individual_times(f'{Database_Directory}/Timing_Result.txt')
+
+    plot_time_duration(f'{Database_Directory}/{basename}/Time_Statistic.png',    Individual_Times, deltas = deltas )
+
+def plot_time_duration(filename, Times_Dictionary, deltas= None):
+
+    duration= []
+    prep_duration = []
+    fit_duration = []
+    finish_duration = []
+    beams = []
+    snr = []
+    inclination= []
+    flux = []
+    RHI = []
+    status = []
+
+
+    for galaxy in  Times_Dictionary:
+        duration.append([Times_Dictionary[galaxy]['Duration']])
+        prep_duration.append([Times_Dictionary[galaxy]['Preparation_Duration']])
+        fit_duration.append([Times_Dictionary[galaxy]['Fit_Duration']])
+        finish_duration.append([Times_Dictionary[galaxy]['Roundup_Duration']])
+        deltas_index = deltas['NAME'].index(galaxy)
+        beams.append([deltas['BEAMS_ACROSS'][deltas_index]])
+        snr.append([deltas['SNR'][deltas_index]])
+        inclination.append([deltas['CENTRAL_INPUT_INCLINATION'][deltas_index]])
+        flux.append([deltas['TOTAL_FLUX'][deltas_index][0]])
+        RHI.append([deltas['R_HI'][deltas_index][0]])
+        status.append([deltas['STATUS'][deltas_index]])
+
+
+    plot_assembly = {'PLOT_1':{
+                        'WINDOW_0': {'LOCATION': 0,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [beams,'Maj Ax Beams'],
+                                     'NO_MEAN': False,
+                                     #'PATCH':  Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['XPOS']])),\
+                                    #                    np.nanmean(np.array([x[0] for x in deltas['YPOS']]))],\
+                                    #           width=np.nanstd(np.array([x[0] for x in deltas['XPOS']])) ,\
+                                    #           height=np.nanstd(np.array([x[0] for x in deltas['YPOS']])), angle=0,\
+                                    #        edgecolor='none', alpha=0.6, lw=4, facecolor='k', hatch = '////', zorder=-1)
+                                    },
+                        'WINDOW_1': {'LOCATION': 1,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [snr,'SNR'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_2': {'LOCATION': 3,
+                                     'Y': [prep_duration, 'Preparation Duration (hrs)' ],
+                                     'X': [beams ,'Maj Ax Beams'],
+                                     'NO_MEAN': False,
+                                     #'PATCH':  Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['XPOS']])),\
+                                    #                    np.nanmean(np.array([x[0] for x in deltas['YPOS']]))],\
+                                    #           width=np.nanstd(np.array([x[0] for x in deltas['XPOS']])) ,\
+                                    #           height=np.nanstd(np.array([x[0] for x in deltas['YPOS']])), angle=0,\
+                                    #        edgecolor='none', alpha=0.6, lw=4, facecolor='k', hatch = '////', zorder=-1)
+                                    },
+                        'WINDOW_3': {'LOCATION': 4,
+                                     'Y': [prep_duration, 'Preparation Duration (hrs)' ],
+                                     'X': [snr,'SNR'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_4': {'LOCATION': 6,
+                                     'Y': [fit_duration, 'Fit Duration (hrs)' ],
+                                     'X': [beams ,'Maj Ax Beams'],
+                                     'NO_MEAN': False,
+                                     #'PATCH':  Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['XPOS']])),\
+                                    #                    np.nanmean(np.array([x[0] for x in deltas['YPOS']]))],\
+                                    #           width=np.nanstd(np.array([x[0] for x in deltas['XPOS']])) ,\
+                                    #           height=np.nanstd(np.array([x[0] for x in deltas['YPOS']])), angle=0,\
+                                    #        edgecolor='none', alpha=0.6, lw=4, facecolor='k', hatch = '////', zorder=-1)
+                                    },
+                        'WINDOW_5': {'LOCATION': 7,
+                                     'Y': [fit_duration, 'Fit Duration (hrs)' ],
+                                     'X': [snr,'SNR'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_6': {'LOCATION': 9,
+                                     'Y': [finish_duration, 'Finish Duration (hrs)' ],
+                                     'X': [beams ,'Maj Ax Beams'],
+                                     'NO_MEAN': False,
+                                     #'PATCH':  Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['XPOS']])),\
+                                    #                    np.nanmean(np.array([x[0] for x in deltas['YPOS']]))],\
+                                    #           width=np.nanstd(np.array([x[0] for x in deltas['XPOS']])) ,\
+                                    #           height=np.nanstd(np.array([x[0] for x in deltas['YPOS']])), angle=0,\
+                                    #        edgecolor='none', alpha=0.6, lw=4, facecolor='k', hatch = '////', zorder=-1)
+                                    },
+                        'WINDOW_7': {'LOCATION': 10,
+                                     'Y': [finish_duration, 'Finish Duration (hrs)' ],
+                                     'X': [snr,'SNR'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_8': {'LOCATION': 2,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [inclination,'Central Inclination'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_9': {'LOCATION': 5,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [status,'Fit status'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_10': {'LOCATION': 8,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [flux,'Total Flux'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+                        'WINDOW_11': {'LOCATION': 11,
+                                     'Y': [duration, 'Duration (hrs)' ],
+                                     'X': [RHI,'R$_{HI}$'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     },
+
+                                     }}
+
+    for plot in plot_assembly:
+        labelfont= {'family':'Times New Roman',
+                    'weight':'normal',
+                    'size':26}
+        plt.rc('font',**labelfont)
+        plt.figure(89,figsize=(18,24),dpi=300,facecolor = 'w', edgecolor = 'k')
+
+        #this runs counter to figsize. How can a coding language be this illogical?
+        gs = gridspec.GridSpec(4,3)
+        gs.update(wspace=0.3, hspace=0.3)
+
+
+        for i,key in enumerate(plot_assembly[plot]):
+            if 'NO_MEAN' in plot_assembly[plot][key]:
+                nomean = plot_assembly[plot][key]['NO_MEAN']
+            else:
+                nomean = False
+
+
+
+            ax,legend_items = make_plot(plot_assembly[plot][key]['X'][0],\
+                           plot_assembly[plot][key]['Y'][0],\
+                           xlabel = plot_assembly[plot][key]['X'][1],\
+                           ylabel = plot_assembly[plot][key]['Y'][1],\
+                           location = gs[plot_assembly[plot][key]['LOCATION']],\
+                           No_Mean = nomean,no_error=[True, True])
+            for axis in ['top','bottom','left','right']:
+                ax.spines[axis].set_linewidth(4)
+
+                    # increase tick width
+                ax.tick_params(width=4)
+            if 'PATCH' in plot_assembly[plot][key]:
+                ax.add_patch( plot_assembly[plot][key]['PATCH'])
+            if i == 1:
+
+                # make a legend
+                labelfont= {'family':'Times New Roman',
+                            'weight':'normal',
+                            'size':18}
+                plt.rc('font',**labelfont)
+                chartBox = ax.get_position()
+                ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*1.0, chartBox.height])
+                ax.legend(handles=legend_items,loc='upper left', bbox_to_anchor=(1.25, 1.0), shadow=True, ncol=1)
+                # Beams vs delta inclination
+                labelfont= {'family':'Times New Roman',
+                            'weight':'normal',
+                            'size':26}
+                #AND below it a corruption size indicator
+                #unique_corruption = np.unique(deltas['CORRUPTION'])
+                #if unique_corruption.size > 1:
+
+                #    sizes
+
+
+                plt.rc('font',**labelfont)
+
+
+
+
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close()
+
+
+
+
+
+def read_individual_times(filename):
+    '''Read the times from the timing file and put in dictionary with duration in hrs'''
+
+    with open(filename) as file:
+        lines=file.readlines()
+    individual_times = {}
+    current_galaxy = 'None'
+    for line in lines:
+        individual_words = line.split()
+        if individual_words[-1][-1] == '.':
+            individual_words[-1] = individual_words[-1][:-1]
+        print(individual_words)
+        if individual_words[0] == 'The' and individual_words[1] == 'galaxy':
+            if current_galaxy != 'None':
+                individual_times[current_galaxy] = {'Name': current_galaxy, \
+                        'Start': start_time, 'End': end_time, 'Duration': duration,
+                        'Preparation': prep_time, 'Preparation_Duration':prep_duration,
+                        'Fit': fit_time, 'Fit_Duration':fit_duration, 'Roundup_Duration': roundup_duration }
+            full_directory = individual_words[4]
+
+            current_galaxy = full_directory.split('/')[-2]
+
+            start_time = f'{individual_words[-2]} { individual_words[-1]}'
+        elif individual_words[0] == 'Finished' and individual_words[1] == 'preparations':
+            prep_time = f'{individual_words[-2]} { individual_words[-1]}'
+            if prep_time == 'Not completed':
+                prep_duration = None
+            else:
+                prep_duration = get_duration(start_time,prep_time)
+        elif individual_words[0] == 'Converged' and individual_words[1] == 'to':
+            fit_time = f'{individual_words[-2]} { individual_words[-1]}'
+            if prep_time == 'Not completed':
+                fit_duration = None
+            else:
+                fit_duration=  get_duration(prep_time,fit_time)
+        elif individual_words[0] == 'It' and individual_words[1] == 'finished':
+            end_time = f'{individual_words[-2]} { individual_words[-1]}'
+            duration = get_duration(start_time,end_time)
+            roundup_duration = get_duration(fit_time,end_time)
+    return individual_times
+
+
+def get_duration(start,end):
+    '''Obtain the difference between two string times in hrs'''
+    start_object = datetime.strptime(start, '%Y-%m-%d %H:%M:%S.%f')
+    end_object = datetime.strptime(end, '%Y-%m-%d %H:%M:%S.%f')
+    difference  =end_object - start_object
+    return difference.days*24+difference.seconds/3600.
+
 def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
     plot_assembly = {'PLOT_1':{
                         'WINDOW_0': {'LOCATION': 0,
@@ -222,34 +449,44 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                                                  (float(x[0])**2+float(y[0])**2))] \
                                                  for x,y in zip(deltas['XPOS'],\
                                                  deltas['YPOS'])],\
-                                                 '$\Delta$ Central (beams)'] #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                                 '$\Delta$ Central (beams)'], #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     'NO_ERROR': [True,False]
                                      },
                         'WINDOW_2': {'LOCATION': 3,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['VSYS'], r'$\Delta$ ${\rm V_{sys}}$ (channels)']},
+                                     'Y': [deltas['VSYS'], r'$\Delta$ ${\rm V_{sys}}$ (channels)'],
+                                     'NO_ERROR': [True,False],
+                                     },
                         'WINDOW_3': {'LOCATION': 4,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['INCL'], '$\Delta$ $i$ ($^{\circ}$)']},
+                                     'Y': [deltas['INCL'], '$\Delta$ $i$ ($^{\circ}$)'],
+                                     'NO_ERROR': [True,False]},
                         'WINDOW_4': {'LOCATION': 6,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['PA'], '$\Delta$ PA ($^{\circ}$)']},
+                                     'Y': [deltas['PA'], '$\Delta$ PA ($^{\circ}$)'],
+                                     'NO_ERROR': [True,False]},
                         'WINDOW_5': {'LOCATION': 7,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)']},
+                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)'],
+                                     'NO_ERROR': [True,False]},
                         'WINDOW_6': {'LOCATION': 8,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)']}},
+                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)'],
+                                     'NO_ERROR': [True,False]}},
                 'PLOT_2':{
                         'WINDOW_0': {'LOCATION': 0,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['SDIS'],r'$\Delta$ Dispersion  (channels)']},
+                                     'Y': [deltas['SDIS'],r'$\Delta$ Dispersion  (channels)'],
+                                     'NO_ERROR': [True,False]},
                         'WINDOW_1': {'LOCATION': 1,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['Z0'],r'$\Delta$ Scaleheight (beams)']
+                                     'Y': [deltas['Z0'],r'$\Delta$ Scaleheight (beams)'],
+                                     'NO_ERROR': [True,False]
                                      },
                         'WINDOW_2': {'LOCATION': 3,
                                      'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)']},
+                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)'],
+                                     'NO_ERROR': [True,False]},
                         'WINDOW_3': {'LOCATION': 4,
                                      'X': [deltas['R_HI'], r'$\Delta$ R$_{\rm HI}$  (beams)'],
                                      'Y': [deltas['INCL'],r'$\Delta$ $i$ ($^{\circ}$)'],
@@ -257,13 +494,16 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                                      },
                         'WINDOW_4': {'LOCATION': 6,
                                      'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)']},
+                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)'],
+                                      'NO_ERROR': [True,False]},
                         'WINDOW_5': {'LOCATION': 7,
                                      'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)']},
+                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)'],
+                                      'NO_ERROR': [True,False]},
                         'WINDOW_6': {'LOCATION': 8,
                                      'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)']}}
+                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)'],
+                                      'NO_ERROR': [True,False]}}
                 }
 
     for plot in plot_assembly:
@@ -298,6 +538,10 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                 nomean = plot_assembly[plot][key]['NO_MEAN']
             else:
                 nomean = False
+            if 'NO_ERROR' in plot_assembly[plot][key]:
+                noerr= plot_assembly[plot][key]['NO_ERROR']
+            else:
+                noerr = [False,False]
             ax,legend_items = make_plot(plot_assembly[plot][key]['X'][0],\
                            plot_assembly[plot][key]['Y'][0],\
                            xlabel = plot_assembly[plot][key]['X'][1],\
@@ -305,7 +549,8 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                            location = gs[plot_assembly[plot][key]['LOCATION']],\
                            color=coloring,color_scale= coloring_scale,status =deltas['STATUS'], \
                            symbol=symbol,symbol_string= symbol_string\
-                           ,No_Mean = nomean,size=deltas['STATUS'], size_string = 'Status =  ')
+                           ,No_Mean = nomean,size=deltas['STATUS'], size_string = 'Status =  ',\
+                           no_error =  noerr )
             for axis in ['top','bottom','left','right']:
                 ax.spines[axis].set_linewidth(4)
 
@@ -380,26 +625,32 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
 
 def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_string= '',
                     xlabel = '',ylabel = '', No_Mean = False, size = None,color_scale= [0.,1.],
-                    size_string= '',color=None):
-        try:
+                    size_string= '',color=None,no_error = [False,False]):
+        print(f''' Make plot Input is:
+x_in = {x_in}
+y_in = {y_in}
+status= {status}, location = {location}
+symbol = {symbol}, symbol_string = {symbol_string}
+xlabel = {xlabel}, ylabel = {ylabel}
+size = {size}, size_string= {size_string}
+color_scale= {color_scale}, color = {color}
+No_Mean = {No_Mean},no_error = {no_error}''')
+        if no_error[0]:
+            x = np.array([v for v in x_in], dtype=float)
+            x_err = np.array([0. for v in x_in], dtype=float)
+        else:
             x = np.array([v[0] for v in x_in], dtype=float)
             x_err = np.array([v[1] for v in x_in], dtype=float)
-        except TypeError:
-            x = np.array([v for v in x_in], dtype=float)
-            x_err = np.array([0. for v in x_in], dtype=float)
-        except IndexError:
-            x = np.array([v for v in x_in], dtype=float)
-            x_err = np.array([0. for v in x_in], dtype=float)
 
-        try:
+
+
+        if no_error[1]:
+            y = np.array([v for v in y_in], dtype=float)
+            y_err = np.array([0. for v in y_in], dtype=float)
+        else:
             y = np.array([v[0] for v in y_in], dtype=float)
             y_err = np.array([v[1] for v in y_in], dtype=float)
-        except TypeError:
-            y = np.array([v for v in y_in], dtype=float)
-            y_err = np.array([0. for v in y_in], dtype=float)
-        except IndexError:
-            y = np.array([v for v in y_in], dtype=float)
-            y_err = np.array([0. for v in y_in], dtype=float)
+
         if not status is None:
             status = np.array(status)
 
@@ -460,6 +711,7 @@ def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_str
 
         else:
             size_size = np.zeros(len(x[:]))
+            size_legend_items= 0
 
         symlist = ["o", "v", "^", "<",">","s","P","*","X","D","1","3"]
         alphabet = [f"${x}$" for x in map(chr,range(97,123))]
@@ -484,6 +736,8 @@ def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_str
 
         else:
             color = np.zeros(len(x[:,0]))
+            cmap = plt.cm.get_cmap('gist_gray')
+            rgba_cols = [cmap(color)]
         shape_legend_items = []
         proc_lab_string = []
         for i,shaped in enumerate(req_no_elements):
@@ -519,7 +773,10 @@ def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_str
         ax.text(0.95,0.95,f'Mean = {mean:.1f} $\pm$ {stdev:.1f} ', transform=ax.transAxes,horizontalalignment= 'right', verticalalignment='top')
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        legend_items = shape_legend_items+size_legend_items
+        if size_legend_items == 0.:
+            legend_items = None
+        else:
+            legend_items = shape_legend_items+size_legend_items
         return ax,legend_items
 # Function to calculate the difference between model and fit
 def get_diff(
@@ -1092,7 +1349,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
             cubename = f'{database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)]}_preprocessed.fits'
         else:
             cubename = f'{database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)]}_FAT.fits'
-        
+
         tmp_corruption = database_inp_catalogue["CUBENAME"][database_inp_catalogue["DIRECTORYNAME"].index(galaxy)].split('_')
         if len(tmp_corruption) > 1:
             if tmp_corruption[-1] in ['CS', 'Gauss','UC']:
