@@ -1234,7 +1234,7 @@ def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR
             var_concerned = var_concerned[1:].strip()
         if len(var_concerned) > 1:
             if var_concerned in Variables:
-                print(line)
+            
                 output[var_concerned] = [float(x) for x in line.split('=')[1].rsplit()]
     for input in Variables:
         if input not in output:
