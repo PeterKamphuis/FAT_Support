@@ -1269,9 +1269,9 @@ def fix_links(database_config, database_out_catalogue):
         if str_to_bool(database_out_catalogue['OS'][i]):
             if not os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def') and\
                 os.path.isdir(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/'):
-                linkname = f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Fit_Tirific_OSC/Fit_Tirific_OSC"
-                os.symlink(f"{linkname}.fits",f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.fits")
-                os.symlink(f"{linkname}.def",f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def")
+                linkname = f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Fit_Tirific_OSC/Fit_Tirific_OSC'
+                os.symlink(f'{linkname}.fits',f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.fits')
+                os.symlink(f'{linkname}.def',f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def')
 
 
 
