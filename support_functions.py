@@ -83,7 +83,7 @@ def analyze(Database_Directory,config_file, basename = 'Analysis_Output', \
 
     ####
     if missing_links:
-        fix_links(database_out_catalogue)
+        fix_links(database_config,database_out_catalogue)
 
     deltas, RCs = retrieve_deltas_and_RCs(database_config,
             database_inp_catalogue, database_out_catalogue,binary=GDL,LVHIS=LVHIS)
