@@ -70,7 +70,8 @@ class Proper_Dictionary(OrderedDict):
 
 
 
-def analyze(Database_Directory,config_file, basename = 'Analysis_Output', LVHIS= False,GDL=False):
+def analyze(Database_Directory,config_file, basename = 'Analysis_Output', \
+        LVHIS= False,GDL=False, missing_links = False):
         #load the configuration file
     database_config = load_config_file(
         f'{Database_Directory}/{config_file}')
@@ -81,6 +82,8 @@ def analyze(Database_Directory,config_file, basename = 'Analysis_Output', LVHIS=
         database_config['OUTPUT_CATALOGUE'],binary=GDL)
 
     ####
+    if missing_links:
+        fix_links(database_out_catalogue)
 
     deltas, RCs = retrieve_deltas_and_RCs(database_config,
             database_inp_catalogue, database_out_catalogue,binary=GDL,LVHIS=LVHIS)
@@ -1234,7 +1237,7 @@ def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR
             var_concerned = var_concerned[1:].strip()
         if len(var_concerned) > 1:
             if var_concerned in Variables:
-            
+
                 output[var_concerned] = [float(x) for x in line.split('=')[1].rsplit()]
     for input in Variables:
         if input not in output:
@@ -1260,6 +1263,15 @@ def remove_too_faint(tirific_dictionary):
                 current = sbr[-1]
             tirific_dictionary[key] = tirific_dictionary[key][:len(sbr)]
     return tirific_dictionary
+
+def fix_links(database_config, database_out_catalogue):
+    for i, galaxy in enumerate(database_out_catalogue['DIRECTORY_NAME']):
+        if str_to_bool(database_out_catalogue['OS'][i]):
+            if not os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def') and\
+                os.path.isdir(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/'):
+                linkname = f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Fit_Tirific_OSC/Fit_Tirific_OSC"
+                os.symlink(f"{linkname}.fits",f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.fits")
+                os.symlink(f"{linkname}.def",f"{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def")
 
 
 

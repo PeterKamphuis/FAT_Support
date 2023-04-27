@@ -12,7 +12,7 @@ def main():
 
     mpl_fm.fontManager.addfont("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf")
     #mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
-
+    missing_links = False
     LVHIS_Directory = f'/home/pkamphuis/FAT/LVHIS-26/'
     LVHIS_config_file = 'FAT_defaults.yml'
     Database_config_file = 'FAT_defaults.yml'
@@ -21,7 +21,10 @@ def main():
     Database_Directory = '/home/peter/FAT_Main/Bad_Fits'
 
     #First analyze the database.
-    deltas = sf.analyze(Database_Directory,Database_config_file, basename=f'pyFAT_{version}_Results')
+
+
+    deltas = sf.analyze(Database_Directory,Database_config_file,\
+        basename=f'pyFAT_{version}_Results', missing_links = missing_links)
     #deltas_LVHIS = sf.analyze(LVHIS_Directory,LVHIS_config_file, basename=f'pyFAT_{version}_Results',LVHIS=True)
 
     if os.path.isfile(f'{Database_Directory}/Timing_Result.txt'):
