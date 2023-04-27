@@ -147,7 +147,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
 
                 if indi not in ['MODEL','MODEL_2']:
                     tot += 1
-                kpcradii = np.array(convertskyangle({'OUTPUTLOG': None},RCs[key][indi]['RADIUS'],distance=float(RCs[key][indi]['DISTANCE'][0])))
+                kpcradii = np.array(convertskyangle({'OUTPUTLOG': None,'DEBUG': False},RCs[key][indi]['RADIUS'],distance=float(RCs[key][indi]['DISTANCE'][0])))
                 print(f''' Plotting the RC {RCs[key][indi]['RC']} with:
     radi (arcsec) = {RCs[key][indi]['RADIUS']}
     radi (kpc) = {kpcradii}
@@ -1234,7 +1234,7 @@ def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR
             var_concerned = var_concerned[1:].strip()
         if len(var_concerned) > 1:
             if var_concerned in Variables:
-            
+
                 output[var_concerned] = [float(x) for x in line.split('=')[1].rsplit()]
     for input in Variables:
         if input not in output:
@@ -1524,9 +1524,9 @@ get_DHI.__doc__ =f'''
 #Calculate the actual number of rings in the model from ring size and the size in beams:
 def get_RHI(sbr_profile=[0.,0.],radi= [0.],systemic = 100.,distance=1.):
 
-    sbr_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance},np.array(sbr_profile[0],dtype=float)*1000.\
+    sbr_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False},np.array(sbr_profile[0],dtype=float)*1000.\
                         ,systemic=systemic,arcsquare=True,solar_mass_output=True)
-    sbr_2_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance},np.array(sbr_profile[1],dtype=float)*1000.\
+    sbr_2_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False},np.array(sbr_profile[1],dtype=float)*1000.\
                         ,systemic=systemic,arcsquare=True,solar_mass_output=True)
     # interpolate these to ~1" steps
     new_radii = np.linspace(0,radi[-1],int(radi[-1]))

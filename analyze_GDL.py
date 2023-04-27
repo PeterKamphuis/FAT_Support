@@ -7,9 +7,9 @@ from astropy.io import fits
 def main():
     '''Analyze both the Database and LVHIS fits of the GDL runs.'''
     version = 'v2.0.2'
-    LVHIS_Directory = f'/home/peter/FAT_Main/Test_Sets/Analysis_Test/LVHIS-26_GDL_{version}'
+    LVHIS_Directory = f'/home/peter/FAT/LVHIS-26_GDL_{version}'
     LVHIS_config_file = 'FAT_INPUT.config'
-    Database_Directory = f'/home/peter/FAT_Main/Test_Sets/Analysis_Test/Database_GDL_v2.0.1'
+    Database_Directory = f'/home/peter/FAT/Database_GDL_{version}'
     Database_config_file = 'FAT_INPUT.config'
 
     #First analyze the database.
