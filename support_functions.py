@@ -21,6 +21,7 @@ import numpy as np
 import copy
 import warnings
 import time
+import sys
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -70,43 +71,229 @@ class Proper_Dictionary(OrderedDict):
 
 
 
-def analyze(Database_Directory,config_file, basename = 'Analysis_Output', \
-        LVHIS= False,GDL=False, missing_links = False):
-        #load the configuration file
-    database_config = load_config_file(
-        f'{Database_Directory}/{config_file}')
-    #load the input catalogue
-    database_inp_catalogue = load_input_catalogue(database_config['INPUT_CATALOGUE'],GDL=GDL)
-    #end the results
-    database_out_catalogue = load_output_catalogue(
-        database_config['OUTPUT_CATALOGUE'],binary=GDL)
-
-    ####
-    if missing_links:
-        fix_links(database_config,database_out_catalogue)
-
-    deltas, RCs = retrieve_deltas_and_RCs(database_config,
-            database_inp_catalogue, database_out_catalogue,binary=GDL,LVHIS=LVHIS)
-    if not os.path.exists(f'''{database_config['MAIN_DIRECTORY']}/{basename}'''):
-        os.system(f'''mkdir {database_config['MAIN_DIRECTORY']}/{basename}''')
-    plot_overview(database_config,deltas,filename=f'''{database_config['MAIN_DIRECTORY']}/{basename}/Release_All''',LVHIS=LVHIS)
-    plot_RCs(RCs,LVHIS=LVHIS,filename=f'''{database_config['MAIN_DIRECTORY']}/{basename}/RCs''')
-    return deltas
+def analyze(program,database,Input_Parameters,basename='EMPTY',\
+        main_directory='EMPTY'):
+    LVHIS = False
+    if database == 'LVHIS':
+        LVHIS = True
+    if not os.path.exists(f'''{main_directory}/{basename}'''):
+        os.system(f'''mkdir {main_directory}/{basename}''')
+    plot_overview(Input_Parameters,\
+        filename=f'''{main_directory}/{basename}/Release_All'''\
+        ,program=program,database=database)
+    RCs = get_all_RCs(Input_Parameters,program=program,database=database)
+    print(f'''{main_directory}/{basename}/RCs''')
+    plot_RCs(RCs,database=database,\
+        filename=f'''{main_directory}/{basename}/RCs''')
 
 
-def plot_RCs(RCs, filename='RCs',LVHIS =False):
+def get_all_RCs(Input_Parameters,program=None,database=None):
+    RCs = {}
 
+    for galaxy in Input_Parameters:
+        RCShape = Input_Parameters[galaxy]['Model']['RCShape']
+        if RCShape not in RCs:
+            RCs[RCShape] = {'MODEL': {'RADIUS':Input_Parameters[galaxy]\
+                ['Model']['RADI'],
+                'RC':Input_Parameters[galaxy]['Model']['VROT'],
+                'DISTANCE': [Input_Parameters[galaxy]['Model']['Distance']],
+                'STATUS': -1}}
+            if float(RCs[RCShape]['MODEL']['DISTANCE'][0]) == 0.:
+                RCs[RCShape]['MODEL']['DISTANCE'] = [0.5]
+
+            if 'RADI_2' in Input_Parameters[galaxy]['Model']:
+                RCs[RCShape] =  {'MODEL_2': {'RADIUS':Input_Parameters[galaxy]\
+                    ['Model']['RADI_2'],
+                    'RC':Input_Parameters[galaxy]['Model']['VROT_2'],
+                    'DISTANCE': [Input_Parameters[galaxy]['Model']['Distance']],
+                    'STATUS': -1}}
+                if float(RCs[RCShape]['MODEL_2']['DISTANCE'][0]) == 0.:
+                    RCs[RCShape]['MODEL_2']['DISTANCE'] = [0.5]
+
+        RCs[RCShape][galaxy] = {'RADIUS':Input_Parameters[galaxy][program]['RADI']\
+            , 'RC':Input_Parameters[galaxy][program]['VROT'],
+            'DISTANCE':[Input_Parameters[galaxy][program]['Distance']],\
+            'STATUS': Input_Parameters[galaxy][program]['Result']}
+        if float(RCs[RCShape][galaxy]['DISTANCE'][0]) == 0.:
+                    RCs[RCShape][galaxy]['DISTANCE'] = [0.5]
+    print(RCs)
+    return RCs
+
+def obtain_individual_parameters(dict,LVHIS = False, Model =False):
+    if Model:
+        tmp = load_tirific(f"{dict['Directory']}/ModelInput.def"\
+                            , LVHIS = LVHIS)
+    else:
+        tmp = load_tirific(get_model_filename(dict), LVHIS = LVHIS)
+    for key in tmp:
+        dict[key] = tmp[key]
+    if Model:
+        dict['FLUX'] = get_flux_values(dict['Directory'],input=True)
+    else:
+        if dict['Result'][0] == 2:
+            dict['FLUX'] = get_flux_values(dict['Directory'])
+        else:
+            dict['FLUX'] = [float('NaN'),float('NaN'),float('NaN')]
+
+def get_model_filename(galaxy_dictionary):
+    if galaxy_dictionary['Result'][0] == 2 or \
+        (galaxy_dictionary['Result'][0] == 1 and os.path.isfile(f'{galaxy_dictionary["Directory"]}/Finalmodel/Finalmodel.def')):
+        filename = f"{galaxy_dictionary['Directory']}/Finalmodel/Finalmodel.def"
+    elif galaxy_dictionary['Result'][0] == 1 :
+        filename = f"{galaxy_dictionary['Directory']}/No_Warp/No_Warp.def"
+    else:
+        filename = 'EMPTY'
+    return filename
+
+
+def obtain_model_settings(galaxy,dict,LVHIS=False,LVHIS_Names = None):
+    if not LVHIS:
+        diameter_in_beams, SNR, RCshape = get_name_info(galaxy)
+    else:
+        diameter_in_beams = [float(dict['RADI'][-1])/float(dict['BMAJ'][0])*2.]
+        if 'RADI_2' in dict:
+            diameter_in_beams.append(float(dict['RADI_2'][-1])\
+                            /float(dict['BMAJ'][0])*2.)
+        else:
+            diameter_in_beams.append(float(dict['RADI'][-1])\
+                /float(dict['BMAJ'][0])*2.)
+
+        SNR = dict['FLUX'][2]/dict['NOISE']
+        RCshape = LVHIS_Names[galaxy]
+
+    dict['Size_in_Beams']= diameter_in_beams
+    dict['SNR']= SNR
+    dict['RCShape']= RCshape
+
+def obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,tmp_inp_cat\
+        ,tmp_config, LVHIS =False):
+    if galaxy not in Input_Parameters:
+        Input_Parameters[galaxy] = {'pyFAT': {}, 'GDL':{}, 'Model': None}
+    Input_Parameters[galaxy][key]['Directory'] =\
+        f"{tmp_config['MAIN_DIRECTORY']}{galaxy}"
+    #Some general info
+    Input_Parameters[galaxy][key]['Distance'] = tmp_inp_cat['DISTANCE'][inp_index]
+    Input_Parameters[galaxy][key]['Cat_Type'] = 'Database'
+    if LVHIS:
+        Input_Parameters[galaxy][key]['Cat_Type'] = 'LVHIS'
+    Input_Parameters[galaxy][key]['Cube'] =f"{tmp_inp_cat['CUBENAME'][inp_index]}.fits"
+    if 'Gauss' in Input_Parameters[galaxy][key]['Cube']:
+        Input_Parameters[galaxy][key]['Corruption'] = 'Gauss'
+    elif 'UC' in Input_Parameters[galaxy][key]['Cube']:
+        Input_Parameters[galaxy][key]['Corruption'] = 'Uncorrupted'
+    elif 'CS' in Input_Parameters[galaxy][key]['Cube']:
+        Input_Parameters[galaxy][key]['Corruption'] = 'CASA'
+    else:
+        Input_Parameters[galaxy][key]['Corruption'] = 'Real'
+    cube = fits.open(f"{Input_Parameters[galaxy][key]['Directory']}/{Input_Parameters[galaxy][key]['Cube']}")
+    fact = 1.
+    try:
+        if cube[0].header['CUNIT3'].upper() == 'M/S':
+            fact = 1000.
+    except KeyError:
+        if cube[0].header['CDELT3'] > 500:
+            fact = 1000.
+    Input_Parameters[galaxy][key]['CHANNEL_WIDTH'] = cube[0].header['CDELT3']/fact
+    try:
+        Input_Parameters[galaxy][key]['NOISE'] = cube[0].header['FAT_NOISE']
+    except KeyError:
+        Input_Parameters[galaxy][key]['NOISE'] = np.std(cube[0].data[1,:,:])
+    cube.close()
+
+def obtain_parameters(Input_Files,missing_links=False):
+
+    Input_Parameters = {}
+
+    for key in Input_Files:
+
+        if key == 'GDL':
+            GDL = True
+        else:
+            GDL = False
+
+        for key2 in ['LVHIS','Database']:
+            LVHIS = False
+            if key2 == 'LVHIS':
+                LVHIS = True
+
+            tmp_config = load_config_file(f"{Input_Files[key][key2]['dir']}/{Input_Files[key][key2]['config']}")
+            if LVHIS:
+                LVHIS_Names = load_LVHIS_Name(tmp_config["MAIN_DIRECTORY"])
+            else:
+                LVHIS_Names = None
+            tmp_inp_cat = load_input_catalogue(tmp_config['INPUT_CATALOGUE'],\
+                                                GDL=GDL)
+            tmp_out_cat = load_output_catalogue(
+                            tmp_config['OUTPUT_CATALOGUE'],binary=GDL)
+            if missing_links and not GDL:
+                fix_links(tmp_config,tmp_out_cat)
+            for i,galaxy in enumerate(tmp_out_cat['DIRECTORY_NAME']):
+                if galaxy not in tmp_inp_cat['DIRECTORYNAME']:
+                    print(f'''The galaxy {galaxy} is not in the input catalogue.
+This should not be possible, Please fix your input ''')
+                else:
+                    inp_index = tmp_inp_cat['DIRECTORYNAME'].index(galaxy)
+                obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,\
+                    tmp_inp_cat,tmp_config,LVHIS = LVHIS)
+
+                Input_Parameters[galaxy][key]['Result'] = get_result(\
+                    tmp_out_cat,tmp_config,i,galaxy,\
+                    binary = GDL)
+
+                obtain_individual_parameters(\
+                    Input_Parameters[galaxy][key],LVHIS=LVHIS)
+                #And get the model
+                if Input_Parameters[galaxy]['Model'] is None:
+                    Input_Parameters[galaxy]['Model'] = {'Directory': \
+                        f"{tmp_config['MAIN_DIRECTORY']}{galaxy}"}
+                    obtain_overview_parameters(Input_Parameters,galaxy,'Model',inp_index,\
+                        tmp_inp_cat,tmp_config,LVHIS = LVHIS)
+                    obtain_individual_parameters(\
+                        Input_Parameters[galaxy]['Model'],LVHIS=LVHIS, Model=True)
+                    obtain_model_settings(galaxy,Input_Parameters[galaxy]['Model']\
+                            ,LVHIS=LVHIS,LVHIS_Names = LVHIS_Names)
+# Load the output parameters
+    #Obtain the model parameters
+
+    return Input_Parameters
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+    log = file if hasattr(file,'write') else sys.stderr
+    traceback.print_stack(file=log)
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+def add_deltas(Input_Parameters):
+    warnings.showwarning = warn_with_traceback
+    for galaxy in Input_Parameters:
+        if 'Model' not in Input_Parameters[galaxy]:
+            print(f'''We have no model values for the galaxy {galaxy}
+skipping this galaxy''')
+        keys = [x for x in Input_Parameters[galaxy] if x != 'Model']
+        for key in keys:
+            try:
+                deltas = galaxy_deltas(Input_Parameters[galaxy][key],\
+                        Input_Parameters[galaxy]['Model'])
+            except Exception as e:
+                print(f"The deltas failed in {galaxy}")
+                traceback.print_exception(type(e),e,e.__traceback__)
+                exit()
+
+def plot_RCs(RCs, filename='RCs',database= None):
+
+    LVHIS = False
+    if database == 'LVHIS':
+        LVHIS=True
     labelfont= {'family':'Times New Roman',
                 'weight':'normal',
                 'size':24}
     plt.rc('font',**labelfont)
 
     plotsize = 8
+
     no_plots = len([x for x in RCs])
 
     length = int(np.ceil(np.sqrt(no_plots)))
 
-    plt.figure(89,figsize=(plotsize*length,plotsize*length),dpi=300,facecolor = 'w', edgecolor = 'k')
+    plt.figure(89,figsize=(plotsize*length/10.,plotsize*length/10.),dpi=300,facecolor = 'w', edgecolor = 'k')
 
     #this runs counter to figsize. How can a coding language be this illogical?
     gs = gridspec.GridSpec(length,length )
@@ -150,12 +337,16 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
 
                 if indi not in ['MODEL','MODEL_2']:
                     tot += 1
-                kpcradii = np.array(convertskyangle({'OUTPUTLOG': None,'DEBUG': False},RCs[key][indi]['RADIUS'],distance=float(RCs[key][indi]['DISTANCE'][0])))
+                print(RCs[key][indi]['DISTANCE'][0])
+                kpcradii = np.array(convertskyangle({'OUTPUTLOG': None,\
+                    'TIMING':None,'DEBUG': False},RCs[key][indi]['RADIUS']\
+                    ,distance=float(RCs[key][indi]['DISTANCE'][0])))
                 print(f''' Plotting the RC {RCs[key][indi]['RC']} with:
     radi (arcsec) = {RCs[key][indi]['RADIUS']}
     radi (kpc) = {kpcradii}
     distance = {float(RCs[key][indi]['DISTANCE'][0])}''')
-                if RCs[key][indi]['DISTANCE'][0] < 1:
+                if float(RCs[key][indi]['DISTANCE'][0]) == 0. :
+                    print(f'There is something wrong with the distance in {key}')
                     exit()
                 if indi == 'MODEL':
                     ax.plot(kpcradii, RCs[key][indi]['RC'], 'b',zorder= 2)
@@ -204,7 +395,7 @@ def plot_RCs(RCs, filename='RCs',LVHIS =False):
         version='Database'
 
     plt.savefig(f'{filename}_RC_{version}.png', bbox_inches='tight')
-
+    print(f'{filename}_RC_{version}.png')
     plt.close()
 
 
@@ -212,7 +403,23 @@ def analyze_timing(Database_Directory, basename = 'Analysis_Output', deltas = No
     '''This function only works for the pyFAT runs not GDL runs'''
     Individual_Times = read_individual_times(f'{Database_Directory}/Timing_Result.txt')
 
-    plot_time_duration(f'{Database_Directory}/{basename}/Time_Statistic.png',    Individual_Times, deltas = deltas )
+    plot_time_duration(f'{Database_Directory}/{basename}/Time_Statistic.png', \
+       Individual_Times )
+
+
+def create_patch(patch,order,Input_Parameters,program=None):
+
+    x= np.array(get_all_specific(patch[1],order,Input_Parameters,\
+        program=program)[0])
+    y= np.array(get_all_specific(patch[2],order,Input_Parameters,\
+        program=program)[0])
+
+    if patch[0] == 'Ellipse':
+        patch_fig = Ellipse(xy=[np.nanmean(x),np.nanmean(y)],\
+                        width=np.nanstd(x) ,height=np.nanstd(y), angle=0,\
+                        edgecolor='none', alpha=0.6, lw=4, facecolor='k', \
+                        hatch = '////', zorder=-1)
+    return patch_fig
 
 def plot_time_duration(filename, Times_Dictionary, deltas= None):
 
@@ -350,7 +557,8 @@ def plot_time_duration(filename, Times_Dictionary, deltas= None):
                     # increase tick width
                 ax.tick_params(width=4)
             if 'PATCH' in plot_assembly[plot][key]:
-                ax.add_patch( plot_assembly[plot][key]['PATCH'])
+                patch_fig = create_patch(Input_Parameters, plot_assembly[plot][key]['PATCH'])
+                ax.add_patch(patch_fig)
             if i == 1:
 
                 # make a legend
@@ -433,79 +641,124 @@ def get_duration(start,end):
     difference  =end_object - start_object
     return difference.days*24+difference.seconds/3600.
 
-def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
+def get_all_specific(select_parameter,order,Input_Parameters,program=None):
+    out = [[],[]]
+    print(f'''select_parameter {select_parameter},
+program {program}
+''')
+    if select_parameter[0] == 'D':
+        models = [x for x in Input_Parameters[order[0]][program]['deltas']]
+        if models[0] == 'ROTCUR' and len(models) == 1:
+            models.append('DISK_FIT')
+        parameter = select_parameter[1:]
+        for galaxy in order:
+            for i,model in enumerate(models):
+                if parameter == 'CENTRAL':
+
+                    try:
+                        x,xerr = Input_Parameters[galaxy][program]['deltas'][model]\
+                            ['XPOS']
+
+                        y,yerr = Input_Parameters[galaxy][program]['deltas'][model]\
+                            ['YPOS']
+
+                        out[0].append(np.sqrt(x**2+y**2))
+                        out[1].append(np.sqrt(x**2*xerr**2+y**2*yerr)**2/\
+                                (x**2+y**2))
+                    except:
+                        out[0].append(float('NaN'))
+                        out[1].append(float('NaN'))
+                else:
+                    try:
+                        out[0].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
+                            [parameter][0]))
+                        out[1].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
+                            [parameter][1]))
+                    except:
+                        out[0].append(float('NaN'))
+                        out[1].append(float('NaN'))
+    else:
+        for galaxy in order:
+            if select_parameter in ['Corruption','SNR']:
+                out[0].append(Input_Parameters[galaxy][program][select_parameter])
+            else:
+                print(f'IP = {Input_Parameters[galaxy][program][select_parameter]}')
+                out[0].append(float(Input_Parameters[galaxy][program][select_parameter][0]))
+                try:
+                    out[1].append(float(Input_Parameters[galaxy][program][f'{select_parameter}_ERR'][0]))
+                except:
+                    try:
+                        out[1].append(float(Input_Parameters[galaxy][program][select_parameter][1]))
+                    except:
+                        out[1].append(float('NaN'))
+    return out
+
+
+def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
+                    ,program = None, database = None):
     plot_assembly = {'PLOT_1':{
                         'WINDOW_0': {'LOCATION': 0,
-                                     'X': [deltas['XPOS'], '$\Delta$ RA (beams)' ],
-                                     'Y': [deltas['YPOS'],'$\Delta$ DEC (beams)'],
+                                     'X': ['DXPOS', '$\Delta$ RA (beams)',program ],
+                                     'Y': ['DYPOS','$\Delta$ DEC (beams)',program ],
                                      'NO_MEAN': True,
-                                     'PATCH':  Ellipse(xy=[np.nanmean(np.array([x[0] for x in deltas['XPOS']])),\
-                                                        np.nanmean(np.array([x[0] for x in deltas['YPOS']]))],\
-                                               width=np.nanstd(np.array([x[0] for x in deltas['XPOS']])) ,\
-                                               height=np.nanstd(np.array([x[0] for x in deltas['YPOS']])), angle=0,\
-                                            edgecolor='none', alpha=0.6, lw=4, facecolor='k', hatch = '////', zorder=-1) },
+                                     'PATCH': ['Ellipse','DXPOS','DYPOS']
+                                     },
                         'WINDOW_1': {'LOCATION': 1,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [[[np.sqrt(float(x[0])**2+float(y[0])**2),\
-                                                 np.sqrt((float(x[0])**2*float(x[1])**2+\
-                                                 float(y[0])**2*float(y[1])**2)/\
-                                                 (float(x[0])**2+float(y[0])**2))] \
-                                                 for x,y in zip(deltas['XPOS'],\
-                                                 deltas['YPOS'])],\
-                                                 '$\Delta$ Central (beams)'], #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DCENTRAL','$\Delta$ Central (beams)',program ], #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
                                      'NO_ERROR': [True,False]
                                      },
                         'WINDOW_2': {'LOCATION': 3,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['VSYS'], r'$\Delta$ ${\rm V_{sys}}$ (channels)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DVSYS', r'$\Delta$ ${\rm V_{sys}}$ (channels)',program],
                                      'NO_ERROR': [True,False],
                                      },
                         'WINDOW_3': {'LOCATION': 4,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['INCL'], '$\Delta$ $i$ ($^{\circ}$)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DINCL', '$\Delta$ $i$ ($^{\circ}$)',program],
                                      'NO_ERROR': [True,False]},
                         'WINDOW_4': {'LOCATION': 6,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['PA'], '$\Delta$ PA ($^{\circ}$)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DPA', '$\Delta$ PA ($^{\circ}$)',program],
                                      'NO_ERROR': [True,False]},
                         'WINDOW_5': {'LOCATION': 7,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
                                      'NO_ERROR': [True,False]},
                         'WINDOW_6': {'LOCATION': 8,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
                                      'NO_ERROR': [True,False]}},
                 'PLOT_2':{
                         'WINDOW_0': {'LOCATION': 0,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['SDIS'],r'$\Delta$ Dispersion  (channels)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DSDIS',r'$\Delta$ Dispersion  (channels)',program],
                                      'NO_ERROR': [True,False]},
                         'WINDOW_1': {'LOCATION': 1,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['Z0'],r'$\Delta$ Scaleheight (beams)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DZ0',r'$\Delta$ Scaleheight (beams)',program],
                                      'NO_ERROR': [True,False]
                                      },
                         'WINDOW_2': {'LOCATION': 3,
-                                     'X': [deltas['BEAMS_ACROSS'], 'Diameter (beams)'],
-                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)'],
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
                                      'NO_ERROR': [True,False]},
                         'WINDOW_3': {'LOCATION': 4,
-                                     'X': [deltas['R_HI'], r'$\Delta$ R$_{\rm HI}$  (beams)'],
-                                     'Y': [deltas['INCL'],r'$\Delta$ $i$ ($^{\circ}$)'],
+                                     'X': ['DR_HI', r'$\Delta$ R$_{\rm HI}$  (beams)',program],
+                                     'Y': ['DINCL',r'$\Delta$ $i$ ($^{\circ}$)',program],
 
                                      },
                         'WINDOW_4': {'LOCATION': 6,
-                                     'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['TOTAL_FLUX'], r'$\Delta$ Tot Flux  (Jy/beam km/s)'],
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
                                       'NO_ERROR': [True,False]},
                         'WINDOW_5': {'LOCATION': 7,
-                                     'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['VROT'], r'$\Delta$ V$_{\rm rot}$  (channels)'],
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
                                       'NO_ERROR': [True,False]},
                         'WINDOW_6': {'LOCATION': 8,
-                                     'X': [deltas['SNR'], 'SNR'],
-                                     'Y': [deltas['R_HI'],r'$\Delta$ R$_{\rm HI}$  (beams)'],
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
                                       'NO_ERROR': [True,False]}}
                 }
 
@@ -526,15 +779,24 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
         #    coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
         #
         #else:
-        coloring = deltas['CENTRAL_INPUT_INCLINATION']
+        order = [x for x in Input_Parameters if \
+            Input_Parameters[x][program]['Cat_Type'] == database]
+
+        result_status = get_all_specific('Result',order,Input_Parameters,\
+                                        program=program)[0]
+        coloring = get_all_specific('INCL',order,Input_Parameters,\
+                                        program='Model')[0]
+
         coloring_scale=[0.,90.]
         colorbarlabel = 'Inclination'
-        if LVHIS:
-            symbol = deltas['INPUT_MODEL']
+        if database == 'LVHIS':
+            symbol = ['ROTCUR', 'DISK FIT']
             symbol_string= 'Compared to '
 
         else:
-            symbol =deltas['CORRUPTION']
+            symbol= get_all_specific('Corruption',order,Input_Parameters,\
+                                        program='Model')[0]
+
             symbol_string= 'Corrupted with: '
         for i,key in enumerate(plot_assembly[plot]):
             if 'NO_MEAN' in plot_assembly[plot][key]:
@@ -545,14 +807,18 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                 noerr= plot_assembly[plot][key]['NO_ERROR']
             else:
                 noerr = [False,False]
-            ax,legend_items = make_plot(plot_assembly[plot][key]['X'][0],\
-                           plot_assembly[plot][key]['Y'][0],\
+            values =[]
+            for par in ['X','Y']:
+                values.append(get_all_specific(plot_assembly[plot][key][par][0]
+                ,order,Input_Parameters,program=plot_assembly[plot][key][par][2]))
+
+            ax,legend_items = make_plot(values[0],values[1],\
                            xlabel = plot_assembly[plot][key]['X'][1],\
                            ylabel = plot_assembly[plot][key]['Y'][1],\
                            location = gs[plot_assembly[plot][key]['LOCATION']],\
-                           color=coloring,color_scale= coloring_scale,status =deltas['STATUS'], \
+                           color=coloring,color_scale= coloring_scale,status = result_status, \
                            symbol=symbol,symbol_string= symbol_string\
-                           ,No_Mean = nomean,size=deltas['STATUS'], size_string = 'Status =  ',\
+                           ,No_Mean = nomean,size=result_status, size_string = 'Status =  ',\
                            no_error =  noerr )
             for axis in ['top','bottom','left','right']:
                 ax.spines[axis].set_linewidth(4)
@@ -560,7 +826,10 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                     # increase tick width
                 ax.tick_params(width=4)
             if 'PATCH' in plot_assembly[plot][key]:
-                ax.add_patch( plot_assembly[plot][key]['PATCH'])
+                patch_fig = create_patch(plot_assembly[plot][key]['PATCH'],\
+                    order,Input_Parameters,program=program)
+                ax.add_patch(patch_fig)
+
             if i == 1:
 
                 # make a legend
@@ -602,13 +871,11 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
                     'weight':'normal',
                     'size':37}
         plt.rc('font',**labelfont)
-        galaxies = 0
+        galaxies = len(result_status)
         succes_galaxies=0
-        for i,x in enumerate(deltas['INPUT_MODEL']):
-            if x==deltas['INPUT_MODEL'][0]:
-                galaxies+=1
-                if deltas['STATUS'][i] > 0.1:
-                    succes_galaxies+=1
+        for x in result_status:
+            if x > 0.1:
+                succes_galaxies+=1
 
 
         plt.figtext(0.5,0.91,f'''Out of {galaxies} galaxies, {succes_galaxies} were succesfully fitted''', horizontalalignment='center')
@@ -629,7 +896,8 @@ def plot_overview(config,deltas,filename='Overview_Difference',LVHIS=False):
 def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_string= '',
                     xlabel = '',ylabel = '', No_Mean = False, size = None,color_scale= [0.,1.],
                     size_string= '',color=None,no_error = [False,False]):
-        print(f''' Make plot Input is:
+        '''
+        print(f' Make plot Input is:
 x_in = {x_in}
 y_in = {y_in}
 status= {status}, location = {location}
@@ -637,26 +905,23 @@ symbol = {symbol}, symbol_string = {symbol_string}
 xlabel = {xlabel}, ylabel = {ylabel}
 size = {size}, size_string= {size_string}
 color_scale= {color_scale}, color = {color}
-No_Mean = {No_Mean},no_error = {no_error}''')
+No_Mean = {No_Mean},no_error = {no_error}')
+        '''
+        #x = np.array([v[0] for v in x_in], dtype=float)
+        x = np.array(x_in[0])
         if no_error[0]:
-            x = np.array([v for v in x_in], dtype=float)
-            x_err = np.array([0. for v in x_in], dtype=float)
+            x_err = np.array([0. for v in x], dtype=float)
         else:
-            x = np.array([v[0] for v in x_in], dtype=float)
-            x_err = np.array([v[1] for v in x_in], dtype=float)
-
-
-
+            x_err = np.array(x_in[1])
+        #y = np.array([v[0] for v in y_in], dtype=float)
+        y = np.array(y_in[0])
         if no_error[1]:
-            y = np.array([v for v in y_in], dtype=float)
-            y_err = np.array([0. for v in y_in], dtype=float)
+            y_err = np.array([0. for v in y], dtype=float)
         else:
-            y = np.array([v[0] for v in y_in], dtype=float)
-            y_err = np.array([v[1] for v in y_in], dtype=float)
+            y_err = np.array(y_in[1])
 
         if not status is None:
             status = np.array(status)
-
             succes = np.where(status > 0.1)[0]
             mean = np.nanmean(y[succes])
             stdev = np.nanstd(y[succes]-mean)
@@ -745,7 +1010,6 @@ No_Mean = {No_Mean},no_error = {no_error}''')
         proc_lab_string = []
         for i,shaped in enumerate(req_no_elements):
                 proc = np.where(symbol == shaped)[0]
-
 
                 if len(proc) > 0:
                     lab_string = f'{symbol_string}{shaped}'
@@ -923,7 +1187,54 @@ get_totflux.__doc__ =f'''
 
  NOTE:
 '''
-def get_flux_values(directory):
+
+def get_flux_values(directory, input =False):
+    #determine the mask and cube
+    masked_cube = get_masked_cube(directory,input=input)
+    Jy_conversion = get_beam_in_pixels(masked_cube[0].header)
+    if input:
+        try:
+            noise = masked_cube[0].header['FAT_NOISE']
+        except:
+            noise = float('NaN')
+    else:
+        noise = float('NaN')
+    total_flux = float(np.nansum(masked_cube[0].data)/Jy_conversion)
+
+    error_flux = float(np.sqrt(masked_cube[0].data[masked_cube[0].data != 0.].size\
+                    /Jy_conversion)*noise)
+    average_flux = float(total_flux/masked_cube[0].data[masked_cube[0].data != 0.].size\
+                        *Jy_conversion)#Jy/beam
+    return [total_flux,error_flux,average_flux]
+
+def get_beam_in_pixels(Template_Header, beam= None):
+    if beam is None:
+        beam = [Template_Header["BMAJ"],Template_Header["BMIN"]]
+    #  https://science.nrao.edu/facilities/vla/proposing/TBconv
+    beamarea=(np.pi*abs((beam[0]*beam[1])))/(4.*np.log(2.))
+    return beamarea/(abs(Template_Header['CDELT1'])*abs(Template_Header['CDELT2']))
+
+def get_masked_cube(directory, input =False):
+    for file in os.listdir(f'{directory}/Sofia_Output/'):
+        if '_binmask' in file:
+            mask = fits.open(f'{directory}/Sofia_Output/{file}')
+            cube_end = file.split('_')[-1]
+            if cube_end == 'binmask.fits':
+                cube_end = f'''{file.split('_')[-2]}.fits'''
+        if '_mask.fits' in file:
+            mask = fits.open(f'{directory}/Sofia_Output/{file}')
+            cube_end = '_FAT.fits'
+    if input:
+        for file in os.listdir(f'{directory}'):
+            if file.endswith(cube_end):
+                print(f'We are opening the Cube {file}')
+                cube=fits.open(f'{directory}/{file}')
+    else:
+        cube = fits.open(f'{directory}/Finalmodel/Finalmodel.fits')
+    cube[0].data[mask[0].data < 0.1] = 0.
+    return cube
+
+def removefunction_get_sdsdsdflux_values(directory):
     for file in os.listdir(f'{directory}/Sofia_Output/'):
         if '_binmask' in file:
             mask = fits.open(f'{directory}/Sofia_Output/{file}')
@@ -1068,7 +1379,6 @@ def load_output_catalogue(filename, debug = False,binary = False):
 
 def load_config_file(filename, debug = False, old_style=False):
     file_extension = os.path.splitext(filename)
-    print(file_extension)
     Translation_Dictionary = {'MAIN_DIRECTORY':'MAINDIR',
                               'CATALOGUE_START_ID':'STARTGALAXY',
                               'CATALOGUE_END_ID':'ENDGALAXY',
@@ -1123,6 +1433,16 @@ def load_config_file(filename, debug = False, old_style=False):
 
                     Configuration[add_key] = tmp.split('=', 1)[1].strip()
 
+        if not os.path.exists(Configuration['MAIN_DIRECTORY']):
+            indir = '/'.join(filename.split('/')[:-1])
+            if Configuration['MAIN_DIRECTORY'] != indir and\
+                os.path.exists(indir):
+                Configuration['MAIN_DIRECTORY']=indir
+            else:
+                Configuration['MAIN_DIRECTORY'] = input(f'''
+                    Your main directory ({Configuration['MAIN_DIRECTORY']}) does not exist.
+                    Please provide the correct file name.
+                    ''')
     else:
         cfg = OmegaConf.structured(defaults)
 
@@ -1131,6 +1451,30 @@ def load_config_file(filename, debug = False, old_style=False):
 #merge yml file with defaults
         cfg = OmegaConf.merge(cfg,yaml_config)
         # translate into our dictionary
+        if not os.path.exists(cfg.input.main_directory):
+            indir = '/'.join(filename.split('/')[:-1])
+
+            if cfg.input.main_directory != indir and\
+                os.path.exists(indir):
+                cfg.input.main_directory=indir
+            else:
+                cfg.input.main_directory = input(f'''
+                    Your main directory ({cfg.input.main_directory}) does not exist.
+                    Please provide the correct file name.
+                    ''')
+        if not os.path.exists(cfg.input.catalogue):
+            indir = '/'.join(filename.split('/')[:-1])
+            catalogue = cfg.input.catalogue.split('/')[-1]
+
+            if cfg.input.catalogue != f"{indir}{catalogue}" and\
+                os.path.exists(f"{indir}{catalogue}"):
+                cfg.input.catalogue = f"{indir}{catalogue}"
+            else:
+                cfg.input.catalogue = input(f'''
+                    Your catalogue ({cfg.input.catalogue}) does not exist.
+                    Please provide the correct file name.
+                    ''')
+
         Configuration_ini = setup_configuration(cfg)
 
         Configuration_ini['INPUT_CATALOGUE'] = Configuration_ini['CATALOGUE']
@@ -1139,7 +1483,12 @@ def load_config_file(filename, debug = False, old_style=False):
         #Configuration['INPUT_CATALOGUE']= f'''{Configuration['MAIN_DIRECTORY']}{Configuration['INPUT_CATALOGUE']}'''
 
     while not os.path.exists(Configuration['INPUT_CATALOGUE']):
-        Configuration['INPUT_CATALOGUE'] = input('''
+        file = Configuration['INPUT_CATALOGUE'].split('/')[-1]
+
+        if os.path.exists(f"{Configuration['MAIN_DIRECTORY']}{file}"):
+            Configuration['INPUT_CATALOGUE'] = f"{Configuration['MAIN_DIRECTORY']}{file}"
+        else:
+            Configuration['INPUT_CATALOGUE'] = input('''
                     Your input catalogue ({}) does not exist.
                     Please provide the correct file name.
                     '''.format(Configuration['INPUT_CATALOGUE']))
@@ -1148,11 +1497,16 @@ def load_config_file(filename, debug = False, old_style=False):
     if len(output_catalogue_dir) > 1:
         check_dir = '/'.join(output_catalogue_dir[:-1])
         while not os.path.isdir(check_dir):
-            check_dir= input('''
+            if os.path.exists(f"{Configuration['MAIN_DIRECTORY']}{output_catalogue_dir[-1]}"):
+                Configuration['OUTPUT_CATALOGUE'] = f"{Configuration['MAIN_DIRECTORY']}{output_catalogue_dir[-1]}"
+                check_dir=f"{Configuration['MAIN_DIRECTORY']}"
+            else:
+                check_dir= input('''
                     The directory for your output catalogue ({}) does not exist.
                     Please provide the correct directory name.
                     '''.format(Configuration['OUTPUT_CATALOGUE']))
-            Configuration['OUTPUT_CATALOGUE'] = check_dir+'/'+output_catalogue_dir[-1]
+                Configuration['OUTPUT_CATALOGUE'] = check_dir+'/'+output_catalogue_dir[-1]
+
 
 
     return Configuration
@@ -1209,15 +1563,20 @@ def load_LVHIS_Name(directory):
             print(f' The line {line} does not adhere to our expectations.' )
     return name_dictionary
 #Function for loading the variables of a tirific def file into a set of variables to be used
-def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT','VROT_ERR',
-                 'Z0', 'Z0_ERR', 'SBR','SBR_ERR', 'INCL','INCL_ERR','PA','PA_ERR','XPOS','XPOS_ERR','YPOS','YPOS_ERR','VSYS','VSYS_ERR','SDIS','SDIS_ERR'
-                 ,'VROT_2','VROT_2_ERR',  'Z0_2','Z0_2_ERR','SBR_2','SBR_2_ERR',
-                 'INCL_2', 'INCL_2_ERR','PA_2','PA_2_ERR','XPOS_2','XPOS_2_ERR','YPOS_2','YPOS_2_ERR','VSYS_2','VSYS_2_ERR','SDIS_2','SDIS_2_ERR','CONDISP','CFLUX','CFLUX_2'],
-                LVHIS=False):
+def load_tirific(filename,Variables = None, LVHIS=False):
+    if Variables is None:
+        Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR','RADI','VROT',\
+                     'VROT_ERR','Z0', 'Z0_ERR', 'SBR','SBR_ERR', 'INCL',\
+                     'INCL_ERR','PA','PA_ERR','XPOS','XPOS_ERR','YPOS',\
+                     'YPOS_ERR','VSYS','VSYS_ERR','SDIS','SDIS_ERR','VROT_2',\
+                     'VROT_2_ERR',  'Z0_2','Z0_2_ERR','SBR_2','SBR_2_ERR',
+                     'INCL_2', 'INCL_2_ERR','PA_2','PA_2_ERR','XPOS_2',\
+                     'XPOS_2_ERR','YPOS_2','YPOS_2_ERR','VSYS_2','VSYS_2_ERR',\
+                     'SDIS_2','SDIS_2_ERR','CONDISP','CFLUX','CFLUX_2']
+
     if LVHIS:
         Variables.append('RADI_2')
     Variables = np.array([e.upper() for e in Variables],dtype=str)
-
     if filename == 'EMPTY':
         template = ['RADI = 0. 100.  200.\n']
     else:
@@ -1241,7 +1600,10 @@ def load_tirific(filename,Variables = ['BMIN','BMAJ','BPA','RMS','DISTANCE','NUR
                 output[var_concerned] = [float(x) for x in line.split('=')[1].rsplit()]
     for input in Variables:
         if input not in output:
-            output[input] = [float('NaN') for x in output['RADI']]
+            if input == 'RADI_2':
+                pass
+            else:
+                output[input] = [float('NaN') for x in output['RADI']]
 
     return output
 
@@ -1273,9 +1635,120 @@ def fix_links(database_config, database_out_catalogue):
                 os.symlink(f'{linkname}.fits',f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.fits')
                 os.symlink(f'{linkname}.def',f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def')
 
+def get_result(database_out_catalogue,database_config,index,galaxy,binary = False):
+    status =0
+    if binary:
+        if int(database_out_catalogue['AC1'][index]) ==1:
+            status =1
+        if int(database_out_catalogue['AC2'][index]) ==1:
+            status =2
+    else:
+        print(f'''What on earth {database_out_catalogue['OS'][index]}''')
+        if str_to_bool(database_out_catalogue['OS'][index]):
+            status = 2
+        else:
+            if os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def'):
+                status = 1
+    return [status,database_out_catalogue['COMMENTS_ON_FIT_RESULT'][index]]
+
+def galaxy_deltas(output_dict,model_dict,LVHIS=False):
+    #Get the deltas for an individual galaxy
+    ext = ''
+    if 'RADI_2' in model_dict:
+        models = ['ROTCUR','DISK_FIT']
+    elif np.sum(model_dict[f"VROT_2"]) == 0:
+        models = ['ROTCUR']
+    else:
+        models = ['TIRIFIC']
+    if output_dict['Result'][0] > 0:
+        deltas ={}
+        for model in models:
+            if model == 'DISK_FIT':
+                ext = '_2'
+            deltas[model] = {}
+        #First some odd deltas
+            deltas[model]['MAX_EXTEND'] = get_diff_rmax(\
+                model_dict[f'RADI{ext}'],output_dict['RADI'],output_dict['BMAJ'][0])
+        #If the model has a SBR profile we can determine a Tru RHI
+        if model == 'TIRIFIC':
+            model_RHI = get_RHI(sbr_profile=[model_dict[f'SBR'],\
+                model_dict[f'SBR_2']],radi=model_dict[f'RADI'],\
+                systemic=model_dict[f'VSYS'][0],distance=model_dict['Distance'])
+            fitted_RHI = get_RHI(sbr_profile=[output_dict[f'SBR'],\
+                output_dict[f'SBR_2']],radi=output_dict[f'RADI'],\
+                systemic=output_dict[f'VSYS'][0],distance=model_dict['Distance'])
+
+            deltas[model]['R_HI'] = [(model_RHI[0]-fitted_RHI[0])/\
+                (float(output_dict['BMAJ'][0])*3600.),(model_RHI[1]+fitted_RHI[1])/\
+                (float(output_dict['BMAJ'][0])*3600.)]
+        else:
+            #If there is not SBR we use a proxy
+            deltas[model]['R_HI'] = deltas[model]['MAX_EXTEND']
 
 
-def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_out_catalogue,binary=False,LVHIS= False):
+        deltas[model]['FLUX'] = [output_dict['FLUX'][0]-\
+            model_dict['FLUX'][0],output_dict['FLUX'][1]+model_dict['FLUX'][1]]
+
+        #Then we go through the parameters in the output dictionary
+        for parameter in output_dict:
+            print(f'Starting to check {parameter}')
+            #If not a standard parameter we skip it
+            try:
+                length =  len(output_dict[parameter])
+                number = float(output_dict[parameter][0])
+            except:
+                print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
+                continue
+
+            if parameter[-1] == '2' or parameter == 'RADI' or \
+                len(output_dict[parameter]) != len(output_dict['RADI']) \
+                 or parameter[-4:] == '_ERR':
+                 print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
+                 continue
+            if np.sum(output_dict[parameter]) == 0. or \
+                np.isnan(output_dict[parameter][0]):
+                    raise ModelError(f'There is an error in the output {parameter} in {galaxy}')
+
+            # Set the normalisations values
+            if parameter in ['VROT','SDIS','VSYS']:
+                normalisation = output_dict['CHANNEL_WIDTH']
+            elif parameter in ['XPOS','YPOS']:
+                normalisation = output_dict['BMAJ']
+            else:
+                normalisation = 1.
+            if np.sum(model_dict[f"{parameter}{ext}"]) == 0.:
+                if parameter not in ['Z0','SBR','SDIS']:
+                    raise ModelError(f'We did not find model parameters for {parameter} in {model}')
+                else:
+                    deltas[model][parameter] = \
+                        [float('NaN'),float('NaN')]
+                continue
+            if model in ['ROTCUR','DISK_FIT']:
+                deltas[model][parameter] = get_diff(output_dict[parameter],\
+                    model_dict[f'{parameter}{ext}'],radii = output_dict['RADI'],\
+                    model_radii=model_dict[f'RADI{ext}'],errors =  \
+                    output_dict[f'{parameter}_ERR'],norm = normalisation,\
+                    second = output_dict[f'{parameter}_2'], \
+                    second_model = model_dict[f'{parameter}{ext}'],second_errors = \
+                    output_dict[f'{parameter}{ext}_ERR'])
+            elif model == 'TIRIFIC':
+                deltas[model][parameter] = get_diff(output_dict[parameter],\
+                    model_dict[f'{parameter}'],radii = output_dict['RADI'],\
+                    model_radii=model_dict['RADI'],errors =  \
+                    output_dict[f'{parameter}_ERR'],norm = normalisation, \
+                    second = output_dict[f'{parameter}_2'], \
+                    second_model = model_dict[f'{parameter}_2'],second_errors = \
+                    output_dict[f'{parameter}_2_ERR'])
+            else:
+                raise ModelError(f"The model {model} is not ours")
+            print(f'For {parameter} we find a difference between mod and fit {deltas[model][parameter]}')
+        output_dict['deltas'] = deltas
+    else:
+        output_dict['deltas'] = None
+
+
+
+def removefunction_retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_out_catalogue,binary=False,LVHIS= False):
     '''for every galaxy read the Finalmodel and retrieve RCs and deltas'''
     if LVHIS:
         LVHIS_Names = load_LVHIS_Name(database_config["MAIN_DIRECTORY"])
@@ -1284,21 +1757,9 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
     deltas= {}
     for i, galaxy in enumerate(database_out_catalogue['DIRECTORY_NAME']):
         print(f'Processing directory {galaxy}')
-
-        status = 0
-        if binary:
-            if int(database_out_catalogue['AC1'][i]) ==1:
-                status =1
-            if int(database_out_catalogue['AC2'][i]) ==1:
-                status =2
-        else:
-            print(f'''What on earth {database_out_catalogue['OS'][i]}''')
-            if str_to_bool(database_out_catalogue['OS'][i]):
-                status = 2
-            else:
-                if os.path.isfile(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def'):
-                    status = 1
-
+        status  = get_result(database_out_catalogue,database_config,i,galaxy,\
+                    binary = binary)
+        status = status[0]
         # First read the the input model Class
 
         #Then read the model
@@ -1316,7 +1777,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
         else:
             output_parameters =  load_tirific(
                 f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/Finalmodel/Finalmodel.def')
-            total_flux,error_flux,average_flux = get_flux_values(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/')
+            total_flux = get_flux_values(f'{database_config["MAIN_DIRECTORY"]}/{galaxy}/')
 
         output_parameters = remove_too_faint(output_parameters)
         if 'DISTANCE' in model_parameters:
@@ -1330,7 +1791,7 @@ def retrieve_deltas_and_RCs(database_config, database_inp_catalogue, database_ou
         #write our RCs to a variable
         # First read the the input model Class
         if LVHIS:
-            print(model_parameters['RADI'][-1],model_parameters['BMAJ'][0])
+
             diameter_in_beams = [float(model_parameters['RADI'][-1])/float(model_parameters['BMAJ'][0])*2.]
             if 'RADI_2' in model_parameters:
                 print('What happened')
@@ -1536,9 +1997,9 @@ get_DHI.__doc__ =f'''
 #Calculate the actual number of rings in the model from ring size and the size in beams:
 def get_RHI(sbr_profile=[0.,0.],radi= [0.],systemic = 100.,distance=1.):
 
-    sbr_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False},np.array(sbr_profile[0],dtype=float)*1000.\
+    sbr_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False, 'TIMING': True},np.array(sbr_profile[0],dtype=float)*1000.\
                         ,systemic=systemic,arcsquare=True,solar_mass_output=True)
-    sbr_2_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False},np.array(sbr_profile[1],dtype=float)*1000.\
+    sbr_2_msolar = columndensity({'OUTPUTLOG': None, 'DISTANCE': distance,'DEBUG':False,'TIMING': True},np.array(sbr_profile[1],dtype=float)*1000.\
                         ,systemic=systemic,arcsquare=True,solar_mass_output=True)
     # interpolate these to ~1" steps
     new_radii = np.linspace(0,radi[-1],int(radi[-1]))
