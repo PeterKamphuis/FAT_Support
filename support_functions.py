@@ -78,19 +78,31 @@ def analyze(program,database,Input_Parameters,basename='EMPTY',\
         LVHIS = True
     if not os.path.exists(f'''{main_directory}/{basename}'''):
         os.system(f'''mkdir {main_directory}/{basename}''')
+
     plot_overview(Input_Parameters,\
         filename=f'''{main_directory}/{basename}/Release_All'''\
         ,program=program,database=database)
+    print(database)
     RCs = get_all_RCs(Input_Parameters,program=program,database=database)
+
+
     print(f'''{main_directory}/{basename}/RCs''')
     plot_RCs(RCs,database=database,\
         filename=f'''{main_directory}/{basename}/RCs''')
 
+def compare(Input_Parameters,programs= None):
+
+
+
+
+    print(Input_Parameters)
 
 def get_all_RCs(Input_Parameters,program=None,database=None):
     RCs = {}
-
     for galaxy in Input_Parameters:
+        if Input_Parameters[galaxy]['Model']['Cat_Type'] != database:
+            continue
+        print(f'Adding {galaxy} to the RCs')
         RCShape = Input_Parameters[galaxy]['Model']['RCShape']
         if RCShape not in RCs:
             RCs[RCShape] = {'MODEL': {'RADIUS':Input_Parameters[galaxy]\
@@ -101,22 +113,21 @@ def get_all_RCs(Input_Parameters,program=None,database=None):
             if float(RCs[RCShape]['MODEL']['DISTANCE'][0]) == 0.:
                 RCs[RCShape]['MODEL']['DISTANCE'] = [0.5]
 
-            if 'RADI_2' in Input_Parameters[galaxy]['Model']:
-                RCs[RCShape] =  {'MODEL_2': {'RADIUS':Input_Parameters[galaxy]\
-                    ['Model']['RADI_2'],
-                    'RC':Input_Parameters[galaxy]['Model']['VROT_2'],
-                    'DISTANCE': [Input_Parameters[galaxy]['Model']['Distance']],
-                    'STATUS': -1}}
-                if float(RCs[RCShape]['MODEL_2']['DISTANCE'][0]) == 0.:
-                    RCs[RCShape]['MODEL_2']['DISTANCE'] = [0.5]
+        if 'RADI_2' in Input_Parameters[galaxy]['Model']:
+            RCs[RCShape]['MODEL_2'] = {'RADIUS':Input_Parameters[galaxy]\
+                ['Model']['RADI_2'],
+                'RC':Input_Parameters[galaxy]['Model']['VROT_2'],
+                'DISTANCE': [Input_Parameters[galaxy]['Model']['Distance']],
+                'STATUS': -1}
+            if float(RCs[RCShape]['MODEL_2']['DISTANCE'][0]) == 0.:
+                RCs[RCShape]['MODEL_2']['DISTANCE'] = [0.5]
 
         RCs[RCShape][galaxy] = {'RADIUS':Input_Parameters[galaxy][program]['RADI']\
             , 'RC':Input_Parameters[galaxy][program]['VROT'],
             'DISTANCE':[Input_Parameters[galaxy][program]['Distance']],\
-            'STATUS': Input_Parameters[galaxy][program]['Result']}
+            'STATUS': int(Input_Parameters[galaxy][program]['Result'][0])}
         if float(RCs[RCShape][galaxy]['DISTANCE'][0]) == 0.:
                     RCs[RCShape][galaxy]['DISTANCE'] = [0.5]
-    print(RCs)
     return RCs
 
 def obtain_individual_parameters(dict,LVHIS = False, Model =False):
@@ -160,7 +171,14 @@ def obtain_model_settings(galaxy,dict,LVHIS=False,LVHIS_Names = None):
 
         SNR = dict['FLUX'][2]/dict['NOISE']
         RCshape = LVHIS_Names[galaxy]
-
+    if 'SBR' in dict:
+        RHI =get_RHI(sbr_profile=[dict[f'SBR'],dict[f'SBR_2']],radi=dict[f'RADI'],\
+            systemic=dict[f'VSYS'][0],distance=dict['Distance'])
+    else:
+        RHI = get_diff_rmax(dict[f'RADI'], dict['RADI'],dict['BMAJ'][0])
+        if 'RADI_2' in dict:
+            RHI.append(get_diff_rmax(dict[f'RADI_2'], dict['RADI'],dict['BMAJ'][0]))
+    dict['R_HI'] = RHI
     dict['Size_in_Beams']= diameter_in_beams
     dict['SNR']= SNR
     dict['RCShape']= RCshape
@@ -184,7 +202,10 @@ def obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,tmp_inp_cat
     elif 'CS' in Input_Parameters[galaxy][key]['Cube']:
         Input_Parameters[galaxy][key]['Corruption'] = 'CASA'
     else:
-        Input_Parameters[galaxy][key]['Corruption'] = 'Real'
+        if LVHIS:
+            Input_Parameters[galaxy][key]['Corruption'] = ['ROTCUR','DISK_FIT']
+        else:
+            Input_Parameters[galaxy][key]['Corruption'] = 'Real'
     cube = fits.open(f"{Input_Parameters[galaxy][key]['Directory']}/{Input_Parameters[galaxy][key]['Cube']}")
     fact = 1.
     try:
@@ -210,8 +231,10 @@ def obtain_parameters(Input_Files,missing_links=False):
             GDL = True
         else:
             GDL = False
+        keyinputs = [x for x in Input_Files[key] if x != 'version']
+        for key2 in keyinputs:
+            print(key2)
 
-        for key2 in ['LVHIS','Database']:
             LVHIS = False
             if key2 == 'LVHIS':
                 LVHIS = True
@@ -282,18 +305,18 @@ def plot_RCs(RCs, filename='RCs',database= None):
     LVHIS = False
     if database == 'LVHIS':
         LVHIS=True
+
     labelfont= {'family':'Times New Roman',
                 'weight':'normal',
                 'size':24}
     plt.rc('font',**labelfont)
 
     plotsize = 8
-
     no_plots = len([x for x in RCs])
-
     length = int(np.ceil(np.sqrt(no_plots)))
+    #length = no_plots
 
-    plt.figure(89,figsize=(plotsize*length/10.,plotsize*length/10.),dpi=300,facecolor = 'w', edgecolor = 'k')
+    plt.figure(89,figsize=(plotsize*length,plotsize*length),dpi=300,facecolor = 'w', edgecolor = 'k')
 
     #this runs counter to figsize. How can a coding language be this illogical?
     gs = gridspec.GridSpec(length,length )
@@ -337,15 +360,19 @@ def plot_RCs(RCs, filename='RCs',database= None):
 
                 if indi not in ['MODEL','MODEL_2']:
                     tot += 1
-                print(RCs[key][indi]['DISTANCE'][0])
+
                 kpcradii = np.array(convertskyangle({'OUTPUTLOG': None,\
-                    'TIMING':None,'DEBUG': False},RCs[key][indi]['RADIUS']\
-                    ,distance=float(RCs[key][indi]['DISTANCE'][0])))
+                    'TIMING':None,'DEBUG': False, 'DISTANCE':float(RCs[key][indi]['DISTANCE'][0]) }\
+                    ,RCs[key][indi]['RADIUS']))
                 print(f''' Plotting the RC {RCs[key][indi]['RC']} with:
     radi (arcsec) = {RCs[key][indi]['RADIUS']}
     radi (kpc) = {kpcradii}
     distance = {float(RCs[key][indi]['DISTANCE'][0])}''')
+
                 if float(RCs[key][indi]['DISTANCE'][0]) == 0. :
+                    print(f'There is something wrong with the distance in {key}')
+                    exit()
+                if kpcradii[2] < 0. :
                     print(f'There is something wrong with the distance in {key}')
                     exit()
                 if indi == 'MODEL':
@@ -399,12 +426,13 @@ def plot_RCs(RCs, filename='RCs',database= None):
     plt.close()
 
 
-def analyze_timing(Database_Directory, basename = 'Analysis_Output', deltas = None):
+def analyze_timing(Database_Directory, Input_Parameters,\
+                 database = None, program=None,basename = 'Analysis_Output'):
     '''This function only works for the pyFAT runs not GDL runs'''
-    Individual_Times = read_individual_times(f'{Database_Directory}/Timing_Result.txt')
+    Individual_Times = read_timing_results(f'{Database_Directory}/Timing_Result.txt')
 
     plot_time_duration(f'{Database_Directory}/{basename}/Time_Statistic.png', \
-       Individual_Times )
+       Individual_Times, Input_Parameters, database = database, program=program)
 
 
 def create_patch(patch,order,Input_Parameters,program=None):
@@ -421,7 +449,8 @@ def create_patch(patch,order,Input_Parameters,program=None):
                         hatch = '////', zorder=-1)
     return patch_fig
 
-def plot_time_duration(filename, Times_Dictionary, deltas= None):
+def plot_time_duration(filename, Times_Dictionary,Input_Parameters, \
+                            database = None,program =None ):
 
     duration= []
     prep_duration = []
@@ -433,21 +462,28 @@ def plot_time_duration(filename, Times_Dictionary, deltas= None):
     flux = []
     RHI = []
     status = []
-
+    #order = [x for x in Input_Parameters if \
+    #        Input_Parameters[x][program]['Cat_Type'] == database]
+    order = []
 
     for galaxy in  Times_Dictionary:
-        duration.append([Times_Dictionary[galaxy]['Duration']])
-        prep_duration.append([Times_Dictionary[galaxy]['Preparation_Duration']])
-        fit_duration.append([Times_Dictionary[galaxy]['Fit_Duration']])
-        finish_duration.append([Times_Dictionary[galaxy]['Roundup_Duration']])
-        deltas_index = deltas['NAME'].index(galaxy)
-        beams.append([deltas['BEAMS_ACROSS'][deltas_index]])
-        snr.append([deltas['SNR'][deltas_index]])
-        inclination.append([deltas['CENTRAL_INPUT_INCLINATION'][deltas_index]])
-        flux.append([deltas['TOTAL_FLUX'][deltas_index][0]])
-        RHI.append([deltas['R_HI'][deltas_index][0]])
-        status.append([deltas['STATUS'][deltas_index]])
-
+        duration.append(Times_Dictionary[galaxy]['Summed_Time'][2])
+        prep_duration.append(Times_Dictionary[galaxy]['Ini_Time'][2])
+        fit_duration.append(Times_Dictionary[galaxy]['Fit_Time'][2])
+        finish_duration.append(Times_Dictionary[galaxy]['Shaker_Time'][2])
+        order.append(galaxy)
+    beams = get_all_specific('Size_in_Beams',order,Input_Parameters,\
+                                program='Model')[0]
+    snr = get_all_specific('SNR',order,Input_Parameters,\
+                                program='Model')[0]
+    inclination = get_all_specific('INCL',order,Input_Parameters,\
+                                program='Model')[0]
+    flux =  get_all_specific('FLUX',order,Input_Parameters,\
+                                program='Model')[0]
+    RHI = get_all_specific('R_HI',order,Input_Parameters,\
+                                program='Model')[0]
+    status = get_all_specific('Result',order,Input_Parameters,\
+                                program=program)[0]
 
     plot_assembly = {'PLOT_1':{
                         'WINDOW_0': {'LOCATION': 0,
@@ -543,7 +579,7 @@ def plot_time_duration(filename, Times_Dictionary, deltas= None):
             else:
                 nomean = False
 
-
+            print(plot_assembly[plot][key]['X'][1],plot_assembly[plot][key]['Y'][1])
 
             ax,legend_items = make_plot(plot_assembly[plot][key]['X'][0],\
                            plot_assembly[plot][key]['Y'][0],\
@@ -589,65 +625,135 @@ def plot_time_duration(filename, Times_Dictionary, deltas= None):
         plt.close()
 
 
-
-
-
-def read_individual_times(filename):
-    '''Read the times from the timing file and put in dictionary with duration in hrs'''
-
+def read_timing_results(filename):
     with open(filename) as file:
         lines=file.readlines()
+    if lines[0].split()[0] == 'Timing' and  lines[0].split()[1] == 'results':
+        Timing_Results = read_section_times(lines)
+    elif lines[0].split()[0] == 'This' and  lines[0].split()[1] == 'file':
+        Timing_Results = read_individual_times(lines)
+    else:
+        raise FileNotFoundError(f'The file {filename} is not recognized as a timing reselt file.')
+
+    return Timing_Results
+
+def read_section_times(lines):
+    individual_times = {}
+    current_galaxy = 'None'
+
+    for line in lines:
+        individual_words = line.split()
+        if individual_words[-1][-1] == '.':
+            individual_words[-1] = individual_words[-1][:-1]
+
+        if individual_words[0] == 'The' and individual_words[1] == 'galaxy':
+            if current_galaxy != 'None':
+                summed_time = [initialize_time[0],run_time[1],\
+                    np.nansum([initialize_time[2],prep_time[2],sofia_time[2],ig_time[2],\
+                        fit_time[2]])]
+                individual_times[current_galaxy] = {'Name': current_galaxy,
+                        'Run_Time': run_time, 'Summed_Time': summed_time,  \
+                        'Ini_Time': initialize_time,'Prep_Time': prep_time ,\
+                        'Sofia_Time': sofia_time, 'IG_Time': ig_time,\
+                        'Fit_Time':fit_time,'Shaker_Time': ts_time}
+
+            full_directory = individual_words[4]
+            current_galaxy = full_directory.split('/')[-2]
+        elif individual_words[0] == 'Full' and individual_words[2] == 'time':
+            run_time = [f'{individual_words[4]} { individual_words[5]}',\
+                        f'{individual_words[7]} { individual_words[8]}']
+            run_time.append(get_duration(run_time[0],run_time[1]))
+        elif (individual_words[0] == 'Inititalization' or \
+            individual_words[0] == 'Initialization')    and individual_words[1] == 'from':
+            initialize_time = [f'{individual_words[2]} { individual_words[3]}',\
+                        f'{individual_words[5]} { individual_words[6]}']
+            initialize_time.append(get_duration(initialize_time[0],initialize_time[1]))
+        elif individual_words[0] == 'Preparation' and individual_words[1] == 'time':
+            prep_time = [f'{individual_words[3]} { individual_words[4]}',\
+                        f'{individual_words[6]} { individual_words[7]}']
+            prep_time.append(get_duration(prep_time[0],prep_time[1]))
+        elif individual_words[3] == 'Sofia':
+            sofia_time = [f'{individual_words[5]} { individual_words[6]}',\
+                        f'{individual_words[8]} { individual_words[9]}']
+            sofia_time.append(get_duration(sofia_time[0],sofia_time[1]))
+        elif individual_words[3] == 'Initial':
+            ig_time = [f'{individual_words[5]} { individual_words[6]}',\
+                        f'{individual_words[8]} { individual_words[9]}']
+            ig_time.append(get_duration(ig_time[0],ig_time[1]))
+        elif individual_words[2] == 'TirShaking':
+            ts_time = [f'{individual_words[3]} { individual_words[4]}',\
+                        f'{individual_words[6]} { individual_words[7]}']
+            ts_time.append(get_duration(ts_time[0],ts_time[1]))
+        elif individual_words[3] == 'fitting':
+            fit_time = [f'{individual_words[4]} { individual_words[5]}',\
+                        f'{individual_words[7]} { individual_words[8]}']
+            fit_time.append(get_duration(fit_time[0],fit_time[1]))
+
+    return individual_times
+
+
+
+def read_individual_times(lines):
+    '''Read the times from the timing file and put in dictionary with duration in hrs'''
+
     individual_times = {}
     current_galaxy = 'None'
     for line in lines:
         individual_words = line.split()
         if individual_words[-1][-1] == '.':
             individual_words[-1] = individual_words[-1][:-1]
-        print(individual_words)
+
         if individual_words[0] == 'The' and individual_words[1] == 'galaxy':
             if current_galaxy != 'None':
-                individual_times[current_galaxy] = {'Name': current_galaxy, \
-                        'Start': start_time, 'End': end_time, 'Duration': duration,
-                        'Preparation': prep_time, 'Preparation_Duration':prep_duration,
-                        'Fit': fit_time, 'Fit_Duration':fit_duration, 'Roundup_Duration': roundup_duration }
+                summed_time = [run_time[0],run_time[1],\
+                            np.sum([prep_time[2],fit_time[2],ts_time[2]])]
+
+                individual_times[current_galaxy] = {'Name': current_galaxy,
+                        'Run_Time': run_time, 'Summed_Time': summed_time,  \
+                        'Ini_Time': ini_time,'Prep_Time': prep_time ,\
+                        'Sofia_Time': sofia_time, 'IG_Time': ig_time,\
+                        'Fit_Time':fit_time,'Shaker_Time': ts_time}
             full_directory = individual_words[4]
 
             current_galaxy = full_directory.split('/')[-2]
-
             start_time = f'{individual_words[-2]} { individual_words[-1]}'
         elif individual_words[0] == 'Finished' and individual_words[1] == 'preparations':
-            prep_time = f'{individual_words[-2]} { individual_words[-1]}'
-            if prep_time == 'Not completed':
-                prep_duration = None
-            else:
-                prep_duration = get_duration(start_time,prep_time)
+            prep_time = [start_time,f'{individual_words[-2]} { individual_words[-1]}']
+            prep_time.append(get_duration(start_time,prep_time[1]))
         elif individual_words[0] == 'Converged' and individual_words[1] == 'to':
-            fit_time = f'{individual_words[-2]} { individual_words[-1]}'
-            if prep_time == 'Not completed':
-                fit_duration = None
-            else:
-                fit_duration=  get_duration(prep_time,fit_time)
+            fit_time = [prep_time[1],f'{individual_words[-2]} { individual_words[-1]}']
+            fit_time.append(get_duration(prep_time[1],fit_time[1]))
         elif individual_words[0] == 'It' and individual_words[1] == 'finished':
-            end_time = f'{individual_words[-2]} { individual_words[-1]}'
-            duration = get_duration(start_time,end_time)
-            roundup_duration = get_duration(fit_time,end_time)
+            run_time = [start_time,f'{individual_words[-2]} { individual_words[-1]}']
+            run_time.append(get_duration(run_time[0],run_time[1]))
+            ts_time = [fit_time[1],f'{individual_words[-2]} { individual_words[-1]}']
+            ts_time.append(get_duration(ts_time[0],ts_time[1]))
+            ini_time = ['Not Started', 'Not Completed', float('NaN')]
+            sofia_time = ['Not Started', 'Not Completed', float('NaN')]
+            ig_time =['Not Started', 'Not Completed', float('NaN')]
+
     return individual_times
 
 
 def get_duration(start,end):
     '''Obtain the difference between two string times in hrs'''
-    start_object = datetime.strptime(start, '%Y-%m-%d %H:%M:%S.%f')
-    end_object = datetime.strptime(end, '%Y-%m-%d %H:%M:%S.%f')
-    difference  =end_object - start_object
-    return difference.days*24+difference.seconds/3600.
+    try:
+        start_object = datetime.strptime(start, '%Y-%m-%d %H:%M:%S.%f')
+        end_object = datetime.strptime(end, '%Y-%m-%d %H:%M:%S.%f')
+        difference  =end_object - start_object
+        diff_hr = difference.days*24+difference.seconds/3600.
+    except:
+        diff_hr = float('NaN')
+    return diff_hr
 
 def get_all_specific(select_parameter,order,Input_Parameters,program=None):
     out = [[],[]]
-    print(f'''select_parameter {select_parameter},
-program {program}
-''')
     if select_parameter[0] == 'D':
-        models = [x for x in Input_Parameters[order[0]][program]['deltas']]
+        counter =0
+        while Input_Parameters[order[counter]][program]['deltas'] == None:
+            counter += 1
+
+        models = [x for x in Input_Parameters[order[counter]][program]['deltas']]
         if models[0] == 'ROTCUR' and len(models) == 1:
             models.append('DISK_FIT')
         parameter = select_parameter[1:]
@@ -661,13 +767,18 @@ program {program}
 
                         y,yerr = Input_Parameters[galaxy][program]['deltas'][model]\
                             ['YPOS']
-
+                        x = np.array(x,dtype=float)
+                        xerr = np.array(xerr,dtype=float)
+                        y = np.array(y,dtype=float)
+                        yerr = np.array(yerr,dtype=float)
                         out[0].append(np.sqrt(x**2+y**2))
                         out[1].append(np.sqrt(x**2*xerr**2+y**2*yerr)**2/\
                                 (x**2+y**2))
+                        #print(out)
                     except:
                         out[0].append(float('NaN'))
                         out[1].append(float('NaN'))
+
                 else:
                     try:
                         out[0].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
@@ -678,6 +789,7 @@ program {program}
                         out[0].append(float('NaN'))
                         out[1].append(float('NaN'))
     else:
+        parameter  = select_parameter
         for galaxy in order:
             if select_parameter in ['Corruption','SNR']:
                 out[0].append(Input_Parameters[galaxy][program][select_parameter])
@@ -691,11 +803,209 @@ program {program}
                         out[1].append(float(Input_Parameters[galaxy][program][select_parameter][1]))
                     except:
                         out[1].append(float('NaN'))
+
     return out
+
+def plot_difference(Input_Compare):
+    plot_assembly = {'PLOT_1':{
+                        'WINDOW_0': {'LOCATION': 0,
+                                     'X': ['DXPOS', '$\Delta$ RA (beams)',program ],
+                                     'Y': ['DYPOS','$\Delta$ DEC (beams)',program ],
+                                     'NO_MEAN': True,
+                                     'PATCH': ['Ellipse','DXPOS','DYPOS']
+                                     },
+                        'WINDOW_1': {'LOCATION': 1,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DCENTRAL','$\Delta$ Central (beams)',program ], #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
+                                     'NO_ERROR': [True,False]
+                                     },
+                        'WINDOW_2': {'LOCATION': 3,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DVSYS', r'$\Delta$ ${\rm V_{sys}}$ (channels)',program],
+                                     'NO_ERROR': [True,False],
+                                     },
+                        'WINDOW_3': {'LOCATION': 4,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DINCL', '$\Delta$ $i$ ($^{\circ}$)',program],
+                                     'NO_ERROR': [True,False]},
+                        'WINDOW_4': {'LOCATION': 6,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DPA', '$\Delta$ PA ($^{\circ}$)',program],
+                                     'NO_ERROR': [True,False]},
+                        'WINDOW_5': {'LOCATION': 7,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
+                                     'NO_ERROR': [True,False]},
+                        'WINDOW_6': {'LOCATION': 8,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
+                                     'NO_ERROR': [True,False]}},
+                'PLOT_2':{
+                        'WINDOW_0': {'LOCATION': 0,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DSDIS',r'$\Delta$ Dispersion  (channels)',program],
+                                     'NO_ERROR': [True,False]},
+                        'WINDOW_1': {'LOCATION': 1,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DZ0',r'$\Delta$ Scaleheight (beams)',program],
+                                     'NO_ERROR': [True,False]
+                                     },
+                        'WINDOW_2': {'LOCATION': 3,
+                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
+                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
+                                     'NO_ERROR': [True,False]},
+                        'WINDOW_3': {'LOCATION': 4,
+                                     'X': ['DR_HI', r'$\Delta$ R$_{\rm HI}$  (beams)',program],
+                                     'Y': ['DINCL',r'$\Delta$ $i$ ($^{\circ}$)',program],
+
+                                     },
+                        'WINDOW_4': {'LOCATION': 6,
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
+                                      'NO_ERROR': [True,False]},
+                        'WINDOW_5': {'LOCATION': 7,
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
+                                      'NO_ERROR': [True,False]},
+                        'WINDOW_6': {'LOCATION': 8,
+                                     'X': ['SNR', 'SNR','Model'],
+                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
+                                      'NO_ERROR': [True,False]}}
+                }
+
+    for plot in plot_assembly:
+        labelfont= {'family':'Times New Roman',
+                        'weight':'normal',
+                        'size':26}
+        plt.rc('font',**labelfont)
+        plt.figure(89,figsize=(24,24),dpi=300,facecolor = 'w', edgecolor = 'k')
+
+            #this runs counter to figsize. How can a coding language be this illogical?
+        gs = gridspec.GridSpec(3,3 )
+        gs.update(wspace=0.3, hspace=0.3)
+            #First the RA and DEC
+            #RAval = np.array(RAval,dtype=float)
+            #DECval = np.array(DECval,dtype=float)
+            #if LVHIS:
+            #    coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
+            #
+            #else:
+        order = [x for x in Input_Parameters]
+        symbol= get_all_specific('Corruption',order,Input_Parameters,\
+                                            program='Model')
+        if database == 'LVHIS':
+            symbol= get_all_specific('Corruption',order,Input_Parameters,\
+                                        program='Model')[0]
+            symbol_string= 'Compared to: '
+
+        else:
+            symbol= get_all_specific('Corruption',order,Input_Parameters,\
+                                        program='Model')[0]
+
+            symbol_string= 'Corrupted with: '
+        for i,key in enumerate(plot_assembly[plot]):
+            if 'NO_MEAN' in plot_assembly[plot][key]:
+                nomean = plot_assembly[plot][key]['NO_MEAN']
+            else:
+                nomean = False
+            if 'NO_ERROR' in plot_assembly[plot][key]:
+                noerr= plot_assembly[plot][key]['NO_ERROR']
+            else:
+                noerr = [False,False]
+            values =[]
+            for par in ['X','Y']:
+                values.append(get_all_specific(plot_assembly[plot][key][par][0]
+                ,order,Input_Parameters,program=plot_assembly[plot][key][par][2]))
+            if noerr[0]:
+                values[0] = values[0][0]
+            if noerr[1]:
+                values[1] = values[1][0]
+
+
+            ax,legend_items = make_plot(values[0],values[1],\
+                           xlabel = plot_assembly[plot][key]['X'][1],\
+                           ylabel = plot_assembly[plot][key]['Y'][1],\
+                           location = gs[plot_assembly[plot][key]['LOCATION']],\
+                           color=coloring,color_scale= coloring_scale,status = result_status, \
+                           symbol=symbol,symbol_string= symbol_string\
+                           ,No_Mean = nomean,size=result_status, size_string = 'Status =  ',\
+                           no_error =  noerr )
+            for axis in ['top','bottom','left','right']:
+                ax.spines[axis].set_linewidth(4)
+
+                    # increase tick width
+                ax.tick_params(width=4)
+            if 'PATCH' in plot_assembly[plot][key]:
+                patch_fig = create_patch(plot_assembly[plot][key]['PATCH'],\
+                    order,Input_Parameters,program=program)
+                ax.add_patch(patch_fig)
+
+            if i == 1:
+
+                # make a legend
+                labelfont= {'family':'Times New Roman',
+                            'weight':'normal',
+                            'size':18}
+                plt.rc('font',**labelfont)
+                chartBox = ax.get_position()
+                ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*1.0, chartBox.height])
+                ax.legend(handles=legend_items,loc='upper left', bbox_to_anchor=(1.25, 1.0), shadow=True, ncol=1)
+                # Beams vs delta inclination
+                labelfont= {'family':'Times New Roman',
+                            'weight':'normal',
+                            'size':26}
+                #AND below it a corruption size indicator
+                #unique_corruption = np.unique(deltas['CORRUPTION'])
+                #if unique_corruption.size > 1:
+
+                #    sizes
+
+
+                plt.rc('font',**labelfont)
+
+        #make a color bar
+        ax = plt.subplot(gs[5])
+        #Make a color bar for the inlination
+
+        img = plt.imshow(np.array([coloring_scale]), cmap="rainbow")
+        plt.gca().set_visible(False)
+        cax = plt.axes([0.63, 0.4, 0.01, 0.45])
+        barr = plt.colorbar(orientation="vertical", cax=cax)
+
+        #barr.set_ticks([np.nanmin(coloring), np.max()])
+
+        barr.set_label('Inclination', rotation=270, verticalalignment='bottom')
+
+
+        labelfont= {'family':'Times New Roman',
+                    'weight':'normal',
+                    'size':37}
+        plt.rc('font',**labelfont)
+        galaxies = len(result_status)
+        succes_galaxies=0
+        for x in result_status:
+            if x > 0.1:
+                succes_galaxies+=1
+
+
+        plt.figtext(0.5,0.91,f'''Out of {galaxies} galaxies, {succes_galaxies} were succesfully fitted''', horizontalalignment='center')
+
+        #print([b[0] for item in RAval for b in item[0]])
+        #RAval = np.array(RAval)
+
+        if LVHIS:
+            version= 'LVHIS'
+        else:
+            version='Database'
+
+        plt.savefig(f'{filename}_{plot[-1]}_{version}.png', bbox_inches='tight')
+        plt.close()
+
 
 
 def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
                     ,program = None, database = None):
+
     plot_assembly = {'PLOT_1':{
                         'WINDOW_0': {'LOCATION': 0,
                                      'X': ['DXPOS', '$\Delta$ RA (beams)',program ],
@@ -781,6 +1091,8 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
         #else:
         order = [x for x in Input_Parameters if \
             Input_Parameters[x][program]['Cat_Type'] == database]
+        print(database)
+
 
         result_status = get_all_specific('Result',order,Input_Parameters,\
                                         program=program)[0]
@@ -790,14 +1102,16 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
         coloring_scale=[0.,90.]
         colorbarlabel = 'Inclination'
         if database == 'LVHIS':
-            symbol = ['ROTCUR', 'DISK FIT']
-            symbol_string= 'Compared to '
+            symbol= get_all_specific('Corruption',order,Input_Parameters,\
+                                        program='Model')[0]
+            symbol_string= 'Compared to: '
 
         else:
             symbol= get_all_specific('Corruption',order,Input_Parameters,\
                                         program='Model')[0]
 
             symbol_string= 'Corrupted with: '
+        print(f'We are createing plot {plot}')
         for i,key in enumerate(plot_assembly[plot]):
             if 'NO_MEAN' in plot_assembly[plot][key]:
                 nomean = plot_assembly[plot][key]['NO_MEAN']
@@ -809,9 +1123,16 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
                 noerr = [False,False]
             values =[]
             for par in ['X','Y']:
+
                 values.append(get_all_specific(plot_assembly[plot][key][par][0]
                 ,order,Input_Parameters,program=plot_assembly[plot][key][par][2]))
+            if noerr[0]:
+                values[0] = values[0][0]
+            if noerr[1]:
+                values[1] = values[1][0]
 
+            print(f' plotting {plot_assembly[plot][key]["X"][0]} vs {plot_assembly[plot][key]["Y"][0]} with the values:' )
+            print(values[0],values[1])
             ax,legend_items = make_plot(values[0],values[1],\
                            xlabel = plot_assembly[plot][key]['X'][1],\
                            ylabel = plot_assembly[plot][key]['Y'][1],\
@@ -876,7 +1197,7 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
         for x in result_status:
             if x > 0.1:
                 succes_galaxies+=1
-
+        print(f'Succes Galaxies {succes_galaxies}')
 
         plt.figtext(0.5,0.91,f'''Out of {galaxies} galaxies, {succes_galaxies} were succesfully fitted''', horizontalalignment='center')
 
@@ -887,7 +1208,7 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
             version= 'LVHIS'
         else:
             version='Database'
-
+        print(filename,plot[-1],version)
         plt.savefig(f'{filename}_{plot[-1]}_{version}.png', bbox_inches='tight')
         plt.close()
 
@@ -908,16 +1229,21 @@ color_scale= {color_scale}, color = {color}
 No_Mean = {No_Mean},no_error = {no_error}')
         '''
         #x = np.array([v[0] for v in x_in], dtype=float)
-        x = np.array(x_in[0])
+
+
         if no_error[0]:
+            x = np.array(x_in)
             x_err = np.array([0. for v in x], dtype=float)
         else:
+            x = np.array(x_in[0])
             x_err = np.array(x_in[1])
         #y = np.array([v[0] for v in y_in], dtype=float)
-        y = np.array(y_in[0])
+
         if no_error[1]:
+            y = np.array(y_in)
             y_err = np.array([0. for v in y], dtype=float)
         else:
+            y = np.array(y_in[0])
             y_err = np.array(y_in[1])
 
         if not status is None:
@@ -940,6 +1266,7 @@ No_Mean = {No_Mean},no_error = {no_error}')
         else:
             stat_elements = np.array([0.])
             norm_elements = [1]
+            print(y)
             mean = np.nanmean(y[:])
             stdev = np.nanstd(y[:]-mean)
             transparency =np.ones(len(x[:]))
@@ -994,7 +1321,7 @@ No_Mean = {No_Mean},no_error = {no_error}')
             symbol_use = [symlist[i] for i,shape in enumerate(req_no_elements)]
         else:
             req_no_elements = ['Unspecified']
-            symbol = np.array(['Unspecified' for gh in x[:,0]])
+            symbol = np.array(['Unspecified' for gh in x])
             symbol_use = ['o']
         if not color is None:
             color = np.array(color,dtype=float)
@@ -1003,19 +1330,20 @@ No_Mean = {No_Mean},no_error = {no_error}')
             rgba_cols = [cmap(color)]
 
         else:
-            color = np.zeros(len(x[:,0]))
+            color = np.zeros(len(x))
             cmap = plt.cm.get_cmap('gist_gray')
             rgba_cols = [cmap(color)]
         shape_legend_items = []
         proc_lab_string = []
         for i,shaped in enumerate(req_no_elements):
                 proc = np.where(symbol == shaped)[0]
-
                 if len(proc) > 0:
                     lab_string = f'{symbol_string}{shaped}'
                     if lab_string not in proc_lab_string:
                         tmp_fig = plt.figure(1,figsize=(2,2),dpi=30,facecolor = 'w', edgecolor = 'k')
-                        tmp_plot = plt.scatter(x[proc],y[proc],cmap= 'rainbow', c = 'k', s=4**3, marker = symbol_use[i],alpha = 1,label = lab_string)
+                        tmp_plot = plt.scatter(x[proc],y[proc],cmap= 'rainbow',\
+                            c = 'k', s=4**3, marker = symbol_use[i],alpha = 1,\
+                            label = lab_string)
                         shape_legend_items.append(tmp_plot)
                         proc_lab_string.append(lab_string)
                         plt.close(tmp_fig)
@@ -1270,8 +1598,8 @@ def get_diff_rmax(model_rad,fat_rad,bmaj):
     model_max= float(model_rad[-1]) + model_last_ring
     fat_last_ring =  (fat_rad[-1]-fat_rad[-2])/2.
     fat_max= float(fat_rad[-1]) + fat_last_ring
-    delta_max= (model_max-fat_max)/(bmaj*3600.)
-    return [delta_max, np.max([model_last_ring,fat_last_ring])/(float(bmaj)*3600.)]
+    delta_max= (model_max-fat_max)/(bmaj)
+    return [delta_max, np.max([model_last_ring,fat_last_ring])/(float(bmaj))]
 
 def load_input_catalogue(filename,split_char='|', debug = False,column_check=True,GDL=False):
     Catalogue = Proper_Dictionary({})
@@ -1679,8 +2007,8 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
                 systemic=output_dict[f'VSYS'][0],distance=model_dict['Distance'])
 
             deltas[model]['R_HI'] = [(model_RHI[0]-fitted_RHI[0])/\
-                (float(output_dict['BMAJ'][0])*3600.),(model_RHI[1]+fitted_RHI[1])/\
-                (float(output_dict['BMAJ'][0])*3600.)]
+                (float(output_dict['BMAJ'][0])),(model_RHI[1]+fitted_RHI[1])/\
+                (float(output_dict['BMAJ'][0]))]
         else:
             #If there is not SBR we use a proxy
             deltas[model]['R_HI'] = deltas[model]['MAX_EXTEND']
@@ -1711,9 +2039,10 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
 
             # Set the normalisations values
             if parameter in ['VROT','SDIS','VSYS']:
-                normalisation = output_dict['CHANNEL_WIDTH']
+                normalisation = float(output_dict['CHANNEL_WIDTH'])
             elif parameter in ['XPOS','YPOS']:
-                normalisation = output_dict['BMAJ']
+
+                normalisation = float(output_dict['BMAJ'][0])/3600.
             else:
                 normalisation = 1.
             if np.sum(model_dict[f"{parameter}{ext}"]) == 0.:

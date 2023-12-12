@@ -24,7 +24,7 @@ with warnings.catch_warnings():
 @dataclass
 class defaults:
     parameter: str = 'INCL'
-    directory: str = './'
+    directory: str = '/home/peter/FAT_Main/Analysis/Compare_GDL_pyFAT/Database_pyFAT_v0.1.3/Mass7.5e+10-i70.0d13.0-7.5pa115.0w0.1-0.1-No_Flare-ba15.0SNR6.0bm15.0-10.0ch8.0-No_Arms-Bar-rm0.0'
     stop_iteration: int = -1
 
 def obtain_iteration(name):

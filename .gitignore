@@ -130,3 +130,6 @@ dmypy.json
 
 #OLD_Analysis
 Old_Analysis
+
+#Pickles
+*.pkl
