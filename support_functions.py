@@ -72,7 +72,7 @@ class Proper_Dictionary(OrderedDict):
 
 
 def analyze(program,database,Input_Parameters,basename='EMPTY',\
-        main_directory='EMPTY'):
+        main_directory='EMPTY',missing_links=False):
     LVHIS = False
     if database == 'LVHIS':
         LVHIS = True
@@ -81,8 +81,8 @@ def analyze(program,database,Input_Parameters,basename='EMPTY',\
 
     plot_overview(Input_Parameters,\
         filename=f'''{main_directory}/{basename}/Release_All'''\
-        ,program=program,database=database)
-    print(database)
+        ,program=program,database=database,LVHIS=LVHIS)
+  
     RCs = get_all_RCs(Input_Parameters,program=program,database=database)
 
 
@@ -138,6 +138,7 @@ def obtain_individual_parameters(dict,LVHIS = False, Model =False):
         tmp = load_tirific(get_model_filename(dict), LVHIS = LVHIS)
     for key in tmp:
         dict[key] = tmp[key]
+  
     if Model:
         dict['FLUX'] = get_flux_values(dict['Directory'],input=True)
     else:
@@ -184,9 +185,17 @@ def obtain_model_settings(galaxy,dict,LVHIS=False,LVHIS_Names = None):
     dict['RCShape']= RCshape
 
 def obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,tmp_inp_cat\
-        ,tmp_config, LVHIS =False):
+        ,tmp_config, LVHIS =False, programs = ['pyFAT']):
     if galaxy not in Input_Parameters:
-        Input_Parameters[galaxy] = {'pyFAT': {}, 'GDL':{}, 'Model': None}
+        Input_Parameters[galaxy] = {}
+        for prog in programs:
+          
+            if prog == 'Model':
+                Input_Parameters[galaxy][prog] =  None
+            else:
+                Input_Parameters[galaxy][prog] = {}
+
+       
     Input_Parameters[galaxy][key]['Directory'] =\
         f"{tmp_config['MAIN_DIRECTORY']}{galaxy}"
     #Some general info
@@ -195,17 +204,25 @@ def obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,tmp_inp_cat
     if LVHIS:
         Input_Parameters[galaxy][key]['Cat_Type'] = 'LVHIS'
     Input_Parameters[galaxy][key]['Cube'] =f"{tmp_inp_cat['CUBENAME'][inp_index]}.fits"
-    if 'Gauss' in Input_Parameters[galaxy][key]['Cube']:
-        Input_Parameters[galaxy][key]['Corruption'] = 'Gauss'
-    elif 'UC' in Input_Parameters[galaxy][key]['Cube']:
-        Input_Parameters[galaxy][key]['Corruption'] = 'Uncorrupted'
-    elif 'CS' in Input_Parameters[galaxy][key]['Cube']:
-        Input_Parameters[galaxy][key]['Corruption'] = 'CASA'
+    if key != 'Model':
+        if 'Gauss' in Input_Parameters[galaxy][key]['Cube']:
+            Input_Parameters[galaxy][key]['Corruption'] = 'Gauss'
+        elif 'UC' in Input_Parameters[galaxy][key]['Cube']:
+            Input_Parameters[galaxy][key]['Corruption'] = 'Uncorrupted'
+        elif 'CS' in Input_Parameters[galaxy][key]['Cube']:
+            Input_Parameters[galaxy][key]['Corruption'] = 'CASA'
+        else:
+            if LVHIS:
+                Input_Parameters[galaxy][key]['Corruption'] = ['ROTCUR','DISK_FIT']
+            else:
+                Input_Parameters[galaxy][key]['Corruption'] = 'Real'
     else:
         if LVHIS:
             Input_Parameters[galaxy][key]['Corruption'] = ['ROTCUR','DISK_FIT']
-        else:
-            Input_Parameters[galaxy][key]['Corruption'] = 'Real'
+        else: 
+            Input_Parameters[galaxy][key]['Corruption'] = 'Comparison_Model'
+
+    
     cube = fits.open(f"{Input_Parameters[galaxy][key]['Directory']}/{Input_Parameters[galaxy][key]['Cube']}")
     fact = 1.
     try:
@@ -224,26 +241,30 @@ def obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,tmp_inp_cat
 def obtain_parameters(Input_Files,missing_links=False):
 
     Input_Parameters = {}
-
+    programs = [Input_Files[x]['program'] for x in Input_Files]
+    programs.append('Model')
+   
     for key in Input_Files:
-
+       
         if key == 'GDL':
             GDL = True
         else:
             GDL = False
-        keyinputs = [x for x in Input_Files[key] if x != 'version']
+        keyinputs = [x for x in Input_Files[key] if x not in ['program','version']]
+       
         for key2 in keyinputs:
-            print(key2)
-
+         
             LVHIS = False
             if key2 == 'LVHIS':
                 LVHIS = True
-
+            
             tmp_config = load_config_file(f"{Input_Files[key][key2]['dir']}/{Input_Files[key][key2]['config']}")
             if LVHIS:
                 LVHIS_Names = load_LVHIS_Name(tmp_config["MAIN_DIRECTORY"])
             else:
                 LVHIS_Names = None
+
+           
             tmp_inp_cat = load_input_catalogue(tmp_config['INPUT_CATALOGUE'],\
                                                 GDL=GDL)
             tmp_out_cat = load_output_catalogue(
@@ -257,7 +278,7 @@ This should not be possible, Please fix your input ''')
                 else:
                     inp_index = tmp_inp_cat['DIRECTORYNAME'].index(galaxy)
                 obtain_overview_parameters(Input_Parameters,galaxy,key,inp_index,\
-                    tmp_inp_cat,tmp_config,LVHIS = LVHIS)
+                    tmp_inp_cat,tmp_config,LVHIS = LVHIS , programs = programs)
 
                 Input_Parameters[galaxy][key]['Result'] = get_result(\
                     tmp_out_cat,tmp_config,i,galaxy,\
@@ -270,15 +291,44 @@ This should not be possible, Please fix your input ''')
                     Input_Parameters[galaxy]['Model'] = {'Directory': \
                         f"{tmp_config['MAIN_DIRECTORY']}{galaxy}"}
                     obtain_overview_parameters(Input_Parameters,galaxy,'Model',inp_index,\
-                        tmp_inp_cat,tmp_config,LVHIS = LVHIS)
+                        tmp_inp_cat,tmp_config,LVHIS = LVHIS, programs = programs)
                     obtain_individual_parameters(\
                         Input_Parameters[galaxy]['Model'],LVHIS=LVHIS, Model=True)
                     obtain_model_settings(galaxy,Input_Parameters[galaxy]['Model']\
                             ,LVHIS=LVHIS,LVHIS_Names = LVHIS_Names)
+                    if LVHIS:
+                        split_galaxy(Input_Parameters,galaxy)
 # Load the output parameters
     #Obtain the model parameters
-
+  
     return Input_Parameters
+
+def split_galaxy(Input_Parameters,galaxy):
+
+    print(f'Splitting the galaxy {galaxy} to {galaxy}_2')
+    new_galaxy = f'{galaxy}_2'
+    Input_Parameters[new_galaxy] = {}
+
+    for key in Input_Parameters[galaxy]:
+       
+        Input_Parameters[new_galaxy][key] = copy.deepcopy(Input_Parameters[galaxy][key])
+        
+        Input_Parameters[galaxy][key]['Corruption']= 'ROTCUR'
+        Input_Parameters[new_galaxy][key]['Corruption']= 'DISKFIT'
+           
+        if key == 'Model':
+            #First distribute the  
+            Input_Parameters[galaxy][key]['Size_in_Beams']= [Input_Parameters[galaxy][key]['Size_in_Beams'][0]]
+            Input_Parameters[new_galaxy][key]['Size_in_Beams']= [Input_Parameters[new_galaxy][key]['Size_in_Beams'][1]]
+           
+            for key2 in Input_Parameters[galaxy][key]:
+                if key2[-2:] == '_2':
+                    Input_Parameters[new_galaxy][key][key2[:-2]] = Input_Parameters[new_galaxy][key][key2]
+                    Input_Parameters[galaxy][key][key2] = Input_Parameters[galaxy][key][key2[:-2]]
+                
+
+     
+
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
     log = file if hasattr(file,'write') else sys.stderr
     traceback.print_stack(file=log)
@@ -292,6 +342,8 @@ def add_deltas(Input_Parameters):
 skipping this galaxy''')
         keys = [x for x in Input_Parameters[galaxy] if x != 'Model']
         for key in keys:
+            print(f'!!!!!!!!!!!!!!!!!!!!!!!!1')
+            print(key)
             try:
                 deltas = galaxy_deltas(Input_Parameters[galaxy][key],\
                         Input_Parameters[galaxy]['Model'])
@@ -372,7 +424,7 @@ def plot_RCs(RCs, filename='RCs',database= None):
                 if float(RCs[key][indi]['DISTANCE'][0]) == 0. :
                     print(f'There is something wrong with the distance in {key}')
                     exit()
-                if kpcradii[2] < 0. :
+                if kpcradii[1] < 0. :
                     print(f'There is something wrong with the distance in {key}')
                     exit()
                 if indi == 'MODEL':
@@ -395,6 +447,8 @@ def plot_RCs(RCs, filename='RCs',database= None):
                             ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1,linewidth=linew, alpha =0.5)
                         #ax.set_ylim(ymin,ymax)
                     else:
+                        print(RCs[key][indi]['RC'])
+                     
                         ax.plot(kpcradii, RCs[key][indi]['RC'], 'k',zorder= 1 ,linewidth=linew, alpha =0.75)
                         if LVHIS:
                             ax.plot(kpcradii, RCs[key][indi]['RC'], 'ko',zorder= 1 ,linewidth=linew, alpha =0.75)
@@ -451,6 +505,9 @@ def create_patch(patch,order,Input_Parameters,program=None):
 
 def plot_time_duration(filename, Times_Dictionary,Input_Parameters, \
                             database = None,program =None ):
+    out_file = f'{os.path.splitext(filename)[0]}_outlier.txt'
+    with open(out_file,'w') as file:
+        file.write(f'# For the Time we get the following outliers.')
 
     duration= []
     prep_duration = []
@@ -579,14 +636,13 @@ def plot_time_duration(filename, Times_Dictionary,Input_Parameters, \
             else:
                 nomean = False
 
-            print(plot_assembly[plot][key]['X'][1],plot_assembly[plot][key]['Y'][1])
-
             ax,legend_items = make_plot(plot_assembly[plot][key]['X'][0],\
                            plot_assembly[plot][key]['Y'][0],\
                            xlabel = plot_assembly[plot][key]['X'][1],\
                            ylabel = plot_assembly[plot][key]['Y'][1],\
+                           galaxy_in =  order,\
                            location = gs[plot_assembly[plot][key]['LOCATION']],\
-                           No_Mean = nomean,no_error=[True, True])
+                           No_Mean = nomean,no_error=[True, True],outlier_file = out_file)
             for axis in ['top','bottom','left','right']:
                 ax.spines[axis].set_linewidth(4)
 
@@ -748,53 +804,61 @@ def get_duration(start,end):
 
 def get_all_specific(select_parameter,order,Input_Parameters,program=None):
     out = [[],[]]
+    print(f'Extracting the  {select_parameter}')
     if select_parameter[0] == 'D':
-        counter =0
-        while Input_Parameters[order[counter]][program]['deltas'] == None:
-            counter += 1
-
-        models = [x for x in Input_Parameters[order[counter]][program]['deltas']]
-        if models[0] == 'ROTCUR' and len(models) == 1:
-            models.append('DISK_FIT')
+        
+        models = []
+        for galaxy in order:
+            individual_models = [x for x in Input_Parameters[galaxy][program]['deltas']]
+            for single_ind in individual_models:
+                if single_ind not in models:
+                    models.append(single_ind)
+        
+        #if models[0] == 'ROTCUR' and len(models) == 1:
+        #   models.append('DISK_FIT')
         parameter = select_parameter[1:]
         for galaxy in order:
             for i,model in enumerate(models):
-                if parameter == 'CENTRAL':
+                if model in  Input_Parameters[galaxy][program]['deltas']:
+                    if parameter == 'CENTRAL':
 
-                    try:
-                        x,xerr = Input_Parameters[galaxy][program]['deltas'][model]\
-                            ['XPOS']
+                        try:
+                            x,xerr = Input_Parameters[galaxy][program]['deltas'][model]\
+                                ['XPOS']
 
-                        y,yerr = Input_Parameters[galaxy][program]['deltas'][model]\
-                            ['YPOS']
-                        x = np.array(x,dtype=float)
-                        xerr = np.array(xerr,dtype=float)
-                        y = np.array(y,dtype=float)
-                        yerr = np.array(yerr,dtype=float)
-                        out[0].append(np.sqrt(x**2+y**2))
-                        out[1].append(np.sqrt(x**2*xerr**2+y**2*yerr)**2/\
-                                (x**2+y**2))
-                        #print(out)
-                    except:
-                        out[0].append(float('NaN'))
-                        out[1].append(float('NaN'))
+                            y,yerr = Input_Parameters[galaxy][program]['deltas'][model]\
+                                ['YPOS']
+                            x = np.array(x,dtype=float)
+                            xerr = np.array(xerr,dtype=float)
+                            y = np.array(y,dtype=float)
+                            yerr = np.array(yerr,dtype=float)
+                            out[0].append(np.sqrt(x**2+y**2))
+                            out[1].append(np.sqrt(x**2*xerr**2+y**2*yerr)**2/\
+                                    (x**2+y**2))
+                            #print(out)
+                        except:
+                            out[0].append(float('NaN'))
+                            out[1].append(float('NaN'))
+                        
+                    else:
+                        try:
 
-                else:
-                    try:
-                        out[0].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
-                            [parameter][0]))
-                        out[1].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
-                            [parameter][1]))
-                    except:
-                        out[0].append(float('NaN'))
-                        out[1].append(float('NaN'))
+                            out[0].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
+                                [parameter][0]))
+                            out[1].append(float(Input_Parameters[galaxy][program]['deltas'][model]\
+                                [parameter][1]))
+                        
+                        except:
+                            out[0].append(float('NaN'))
+                            out[1].append(float('NaN'))
+                       
     else:
         parameter  = select_parameter
+      
         for galaxy in order:
             if select_parameter in ['Corruption','SNR']:
                 out[0].append(Input_Parameters[galaxy][program][select_parameter])
             else:
-                print(f'IP = {Input_Parameters[galaxy][program][select_parameter]}')
                 out[0].append(float(Input_Parameters[galaxy][program][select_parameter][0]))
                 try:
                     out[1].append(float(Input_Parameters[galaxy][program][f'{select_parameter}_ERR'][0]))
@@ -803,209 +867,15 @@ def get_all_specific(select_parameter,order,Input_Parameters,program=None):
                         out[1].append(float(Input_Parameters[galaxy][program][select_parameter][1]))
                     except:
                         out[1].append(float('NaN'))
-
     return out
-
-def plot_difference(Input_Compare):
-    plot_assembly = {'PLOT_1':{
-                        'WINDOW_0': {'LOCATION': 0,
-                                     'X': ['DXPOS', '$\Delta$ RA (beams)',program ],
-                                     'Y': ['DYPOS','$\Delta$ DEC (beams)',program ],
-                                     'NO_MEAN': True,
-                                     'PATCH': ['Ellipse','DXPOS','DYPOS']
-                                     },
-                        'WINDOW_1': {'LOCATION': 1,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DCENTRAL','$\Delta$ Central (beams)',program ], #error from https://www.wolframalpha.com/widgets/view.jsp?id=8ac60957610e1ee4894b2cd58e753
-                                     'NO_ERROR': [True,False]
-                                     },
-                        'WINDOW_2': {'LOCATION': 3,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DVSYS', r'$\Delta$ ${\rm V_{sys}}$ (channels)',program],
-                                     'NO_ERROR': [True,False],
-                                     },
-                        'WINDOW_3': {'LOCATION': 4,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DINCL', '$\Delta$ $i$ ($^{\circ}$)',program],
-                                     'NO_ERROR': [True,False]},
-                        'WINDOW_4': {'LOCATION': 6,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DPA', '$\Delta$ PA ($^{\circ}$)',program],
-                                     'NO_ERROR': [True,False]},
-                        'WINDOW_5': {'LOCATION': 7,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
-                                     'NO_ERROR': [True,False]},
-                        'WINDOW_6': {'LOCATION': 8,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
-                                     'NO_ERROR': [True,False]}},
-                'PLOT_2':{
-                        'WINDOW_0': {'LOCATION': 0,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DSDIS',r'$\Delta$ Dispersion  (channels)',program],
-                                     'NO_ERROR': [True,False]},
-                        'WINDOW_1': {'LOCATION': 1,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DZ0',r'$\Delta$ Scaleheight (beams)',program],
-                                     'NO_ERROR': [True,False]
-                                     },
-                        'WINDOW_2': {'LOCATION': 3,
-                                     'X': ['Size_in_Beams', 'Diameter (beams)','Model'],
-                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
-                                     'NO_ERROR': [True,False]},
-                        'WINDOW_3': {'LOCATION': 4,
-                                     'X': ['DR_HI', r'$\Delta$ R$_{\rm HI}$  (beams)',program],
-                                     'Y': ['DINCL',r'$\Delta$ $i$ ($^{\circ}$)',program],
-
-                                     },
-                        'WINDOW_4': {'LOCATION': 6,
-                                     'X': ['SNR', 'SNR','Model'],
-                                     'Y': ['DFLUX', r'$\Delta$ Tot Flux  (Jy/beam km/s)',program],
-                                      'NO_ERROR': [True,False]},
-                        'WINDOW_5': {'LOCATION': 7,
-                                     'X': ['SNR', 'SNR','Model'],
-                                     'Y': ['DVROT', r'$\Delta$ V$_{\rm rot}$  (channels)',program],
-                                      'NO_ERROR': [True,False]},
-                        'WINDOW_6': {'LOCATION': 8,
-                                     'X': ['SNR', 'SNR','Model'],
-                                     'Y': ['DR_HI',r'$\Delta$ R$_{\rm HI}$  (beams)',program],
-                                      'NO_ERROR': [True,False]}}
-                }
-
-    for plot in plot_assembly:
-        labelfont= {'family':'Times New Roman',
-                        'weight':'normal',
-                        'size':26}
-        plt.rc('font',**labelfont)
-        plt.figure(89,figsize=(24,24),dpi=300,facecolor = 'w', edgecolor = 'k')
-
-            #this runs counter to figsize. How can a coding language be this illogical?
-        gs = gridspec.GridSpec(3,3 )
-        gs.update(wspace=0.3, hspace=0.3)
-            #First the RA and DEC
-            #RAval = np.array(RAval,dtype=float)
-            #DECval = np.array(DECval,dtype=float)
-            #if LVHIS:
-            #    coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
-            #
-            #else:
-        order = [x for x in Input_Parameters]
-        symbol= get_all_specific('Corruption',order,Input_Parameters,\
-                                            program='Model')
-        if database == 'LVHIS':
-            symbol= get_all_specific('Corruption',order,Input_Parameters,\
-                                        program='Model')[0]
-            symbol_string= 'Compared to: '
-
-        else:
-            symbol= get_all_specific('Corruption',order,Input_Parameters,\
-                                        program='Model')[0]
-
-            symbol_string= 'Corrupted with: '
-        for i,key in enumerate(plot_assembly[plot]):
-            if 'NO_MEAN' in plot_assembly[plot][key]:
-                nomean = plot_assembly[plot][key]['NO_MEAN']
-            else:
-                nomean = False
-            if 'NO_ERROR' in plot_assembly[plot][key]:
-                noerr= plot_assembly[plot][key]['NO_ERROR']
-            else:
-                noerr = [False,False]
-            values =[]
-            for par in ['X','Y']:
-                values.append(get_all_specific(plot_assembly[plot][key][par][0]
-                ,order,Input_Parameters,program=plot_assembly[plot][key][par][2]))
-            if noerr[0]:
-                values[0] = values[0][0]
-            if noerr[1]:
-                values[1] = values[1][0]
-
-
-            ax,legend_items = make_plot(values[0],values[1],\
-                           xlabel = plot_assembly[plot][key]['X'][1],\
-                           ylabel = plot_assembly[plot][key]['Y'][1],\
-                           location = gs[plot_assembly[plot][key]['LOCATION']],\
-                           color=coloring,color_scale= coloring_scale,status = result_status, \
-                           symbol=symbol,symbol_string= symbol_string\
-                           ,No_Mean = nomean,size=result_status, size_string = 'Status =  ',\
-                           no_error =  noerr )
-            for axis in ['top','bottom','left','right']:
-                ax.spines[axis].set_linewidth(4)
-
-                    # increase tick width
-                ax.tick_params(width=4)
-            if 'PATCH' in plot_assembly[plot][key]:
-                patch_fig = create_patch(plot_assembly[plot][key]['PATCH'],\
-                    order,Input_Parameters,program=program)
-                ax.add_patch(patch_fig)
-
-            if i == 1:
-
-                # make a legend
-                labelfont= {'family':'Times New Roman',
-                            'weight':'normal',
-                            'size':18}
-                plt.rc('font',**labelfont)
-                chartBox = ax.get_position()
-                ax.set_position([chartBox.x0, chartBox.y0, chartBox.width*1.0, chartBox.height])
-                ax.legend(handles=legend_items,loc='upper left', bbox_to_anchor=(1.25, 1.0), shadow=True, ncol=1)
-                # Beams vs delta inclination
-                labelfont= {'family':'Times New Roman',
-                            'weight':'normal',
-                            'size':26}
-                #AND below it a corruption size indicator
-                #unique_corruption = np.unique(deltas['CORRUPTION'])
-                #if unique_corruption.size > 1:
-
-                #    sizes
-
-
-                plt.rc('font',**labelfont)
-
-        #make a color bar
-        ax = plt.subplot(gs[5])
-        #Make a color bar for the inlination
-
-        img = plt.imshow(np.array([coloring_scale]), cmap="rainbow")
-        plt.gca().set_visible(False)
-        cax = plt.axes([0.63, 0.4, 0.01, 0.45])
-        barr = plt.colorbar(orientation="vertical", cax=cax)
-
-        #barr.set_ticks([np.nanmin(coloring), np.max()])
-
-        barr.set_label('Inclination', rotation=270, verticalalignment='bottom')
-
-
-        labelfont= {'family':'Times New Roman',
-                    'weight':'normal',
-                    'size':37}
-        plt.rc('font',**labelfont)
-        galaxies = len(result_status)
-        succes_galaxies=0
-        for x in result_status:
-            if x > 0.1:
-                succes_galaxies+=1
-
-
-        plt.figtext(0.5,0.91,f'''Out of {galaxies} galaxies, {succes_galaxies} were succesfully fitted''', horizontalalignment='center')
-
-        #print([b[0] for item in RAval for b in item[0]])
-        #RAval = np.array(RAval)
-
-        if LVHIS:
-            version= 'LVHIS'
-        else:
-            version='Database'
-
-        plt.savefig(f'{filename}_{plot[-1]}_{version}.png', bbox_inches='tight')
-        plt.close()
 
 
 
 def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
                     ,program = None, database = None):
-
+    out_file = f'{filename}_outlier.txt'
+    with open(out_file,'w') as file:
+        file.write(f'# For the overview we get the following outliers. \n')
     plot_assembly = {'PLOT_1':{
                         'WINDOW_0': {'LOCATION': 0,
                                      'X': ['DXPOS', '$\Delta$ RA (beams)',program ],
@@ -1089,29 +959,28 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
         #    coloring = [0 if x == 'ROTCUR' else 90. for x in deltas['INPUT_MODEL']]
         #
         #else:
+      
         order = [x for x in Input_Parameters if \
             Input_Parameters[x][program]['Cat_Type'] == database]
-        print(database)
-
-
+        
         result_status = get_all_specific('Result',order,Input_Parameters,\
                                         program=program)[0]
         coloring = get_all_specific('INCL',order,Input_Parameters,\
                                         program='Model')[0]
-
+       
         coloring_scale=[0.,90.]
         colorbarlabel = 'Inclination'
         if database == 'LVHIS':
             symbol= get_all_specific('Corruption',order,Input_Parameters,\
                                         program='Model')[0]
-            symbol_string= 'Compared to: '
+            symbol_string= 'Compared to: '         
 
         else:
             symbol= get_all_specific('Corruption',order,Input_Parameters,\
                                         program='Model')[0]
 
             symbol_string= 'Corrupted with: '
-        print(f'We are createing plot {plot}')
+        print(f'We are creating plot {plot}')
         for i,key in enumerate(plot_assembly[plot]):
             if 'NO_MEAN' in plot_assembly[plot][key]:
                 nomean = plot_assembly[plot][key]['NO_MEAN']
@@ -1123,24 +992,23 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
                 noerr = [False,False]
             values =[]
             for par in ['X','Y']:
-
                 values.append(get_all_specific(plot_assembly[plot][key][par][0]
                 ,order,Input_Parameters,program=plot_assembly[plot][key][par][2]))
             if noerr[0]:
                 values[0] = values[0][0]
             if noerr[1]:
                 values[1] = values[1][0]
-
+           
             print(f' plotting {plot_assembly[plot][key]["X"][0]} vs {plot_assembly[plot][key]["Y"][0]} with the values:' )
-            print(values[0],values[1])
             ax,legend_items = make_plot(values[0],values[1],\
                            xlabel = plot_assembly[plot][key]['X'][1],\
                            ylabel = plot_assembly[plot][key]['Y'][1],\
                            location = gs[plot_assembly[plot][key]['LOCATION']],\
                            color=coloring,color_scale= coloring_scale,status = result_status, \
-                           symbol=symbol,symbol_string= symbol_string\
-                           ,No_Mean = nomean,size=result_status, size_string = 'Status =  ',\
-                           no_error =  noerr )
+                           symbol=symbol,symbol_string= symbol_string,\
+                           galaxy_in = order,\
+                           No_Mean = nomean,size=result_status, size_string = 'Status =  ',\
+                           no_error =  noerr,outlier_file=out_file )
             for axis in ['top','bottom','left','right']:
                 ax.spines[axis].set_linewidth(4)
 
@@ -1214,9 +1082,9 @@ def plot_overview(Input_Parameters,filename='Overview_Difference',LVHIS=False\
 
 
 
-def make_plot(x_in,y_in, status= None, location = [0,1], symbol= None,symbol_string= '',
+def make_plot(x_in,y_in,galaxy_in=None, status= None, location = [0,1], symbol= None,symbol_string= '',
                     xlabel = '',ylabel = '', No_Mean = False, size = None,color_scale= [0.,1.],
-                    size_string= '',color=None,no_error = [False,False]):
+                    size_string= '',color=None,no_error = [False,False],outlier_file= None):
         '''
         print(f' Make plot Input is:
 x_in = {x_in}
@@ -1229,8 +1097,8 @@ color_scale= {color_scale}, color = {color}
 No_Mean = {No_Mean},no_error = {no_error}')
         '''
         #x = np.array([v[0] for v in x_in], dtype=float)
-
-
+     
+    
         if no_error[0]:
             x = np.array(x_in)
             x_err = np.array([0. for v in x], dtype=float)
@@ -1266,7 +1134,6 @@ No_Mean = {No_Mean},no_error = {no_error}')
         else:
             stat_elements = np.array([0.])
             norm_elements = [1]
-            print(y)
             mean = np.nanmean(y[:])
             stdev = np.nanstd(y[:]-mean)
             transparency =np.ones(len(x[:]))
@@ -1333,6 +1200,7 @@ No_Mean = {No_Mean},no_error = {no_error}')
             color = np.zeros(len(x))
             cmap = plt.cm.get_cmap('gist_gray')
             rgba_cols = [cmap(color)]
+        
         shape_legend_items = []
         proc_lab_string = []
         for i,shaped in enumerate(req_no_elements):
@@ -1352,18 +1220,44 @@ No_Mean = {No_Mean},no_error = {no_error}')
                     #ax.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = rgba_cols[0][proc[add]][:], s=2**4, marker = symbol_use[i],alpha = 1,label = lab_string)
 
                     ax.scatter(x[proc],y[proc],cmap= 'rainbow', c = rgba_cols[0][proc][:], s=siz, marker = symbol_use[i])
-
+                   
                     plt.errorbar(x[proc],y[proc],xerr=x_err[proc],yerr=y_err[proc], linestyle="None", ecolor = rgba_cols[0][proc][:])
                     #except:
                     #    ax.scatter(x[proc[add]],y[proc[add]],cmap= 'rainbow', c = rgba_cols[0][proc[add]][:], s=siz, marker = symbol_use[i],alpha = norm_elements[j],label = lab_string)
                     #    plt.errorbar(x[proc[add]],y[proc[add]],xerr=np.zeros(len(add)),yerr=y[proc[add],1], linestyle="None", ecolor = rgba_cols[0][proc[add]][:],alpha = norm_elements[j])
-
+       
         if not No_Mean:
             xmin,xmax = ax.get_xlim()
             ax.plot([xmin-1,xmax+2.],[mean,mean], c = 'k', alpha= 0.5)
             ax.plot([xmin-1,xmax+2.],[mean-stdev,mean-stdev], 'k--', alpha= 0.5)
             ax.plot([xmin-1,xmax+2.],[mean+stdev,mean+stdev], 'k--', alpha= 0.5)
             ax.set_xlim(xmin,xmax)
+            if galaxy_in is not None and outlier_file is not None:
+              
+                low_outliers = np.where(mean-stdev > y)[0]
+                high_outliers = np.where(mean+stdev < y)[0]
+              
+                #for i in range(len(y)-1):
+                #   print(i)
+                #    print(f'val ={y[i]}, status = {size_size[i]}, galaxy = {galaxy_in[i]}')
+                #if ylabel ==  '$\Delta$ $i$ ($^{\circ}$)':
+                #    exit()
+                with open(outlier_file,'a') as file:
+                    file.write(f'''# {xlabel} vs {ylabel} has the following outliers.
+# The mean = {mean} and the 1 sig devation = {stdev}. \n''')
+                    if len(low_outliers) == 0 and len(high_outliers) == 0 :
+                        file.write(f'We have no outliers.\n')
+                    else:
+                        status = ['Failed','Flat','Succes']
+                        print(high_outliers,low_outliers)
+                        if len(low_outliers) > 0:
+                            for i in low_outliers:
+                                file.write(f'name = {galaxy_in[i]} with diff = {y[i]} and status = {status[int(size_size[i])]}.\n')
+                        if len(high_outliers) > 0:
+                            for i in high_outliers:
+                                file.write(f'name = {galaxy_in[i]} with diff = {y[i]}  and status = {status[int(size_size[i])]}.\n')
+
+
 
         ax.text(0.95,0.95,f'Mean = {mean:.1f} $\pm$ {stdev:.1f} ', transform=ax.transAxes,horizontalalignment= 'right', verticalalignment='top')
         ax.set_xlabel(xlabel)
@@ -1453,7 +1347,7 @@ def get_diff(
         print(f'In errors = {errors}')
         print(f'norm = {norm} , value = {value}, error = {error}')
         exit()
-    return [value,error]
+    return [value,abs(error)]
 
 # decompose the database name into quantities
 def get_name_info(name):
@@ -1572,7 +1466,6 @@ def removefunction_get_sdsdsdflux_values(directory):
         if '_mask.fits' in file:
             mask = fits.open(f'{directory}/Sofia_Output/{file}')
             cube_end = '_FAT.fits'
-    print(f'This is the end {cube_end}')
     for file in os.listdir(f'{directory}'):
         if file.endswith(cube_end):
             print(f'We are opening the Cube {file}')
@@ -1971,7 +1864,6 @@ def get_result(database_out_catalogue,database_config,index,galaxy,binary = Fals
         if int(database_out_catalogue['AC2'][index]) ==1:
             status =2
     else:
-        print(f'''What on earth {database_out_catalogue['OS'][index]}''')
         if str_to_bool(database_out_catalogue['OS'][index]):
             status = 2
         else:
@@ -1981,21 +1873,21 @@ def get_result(database_out_catalogue,database_config,index,galaxy,binary = Fals
 
 def galaxy_deltas(output_dict,model_dict,LVHIS=False):
     #Get the deltas for an individual galaxy
+    print(f"Starting {output_dict['Directory']}")
     ext = ''
-    if 'RADI_2' in model_dict:
-        models = ['ROTCUR','DISK_FIT']
-    elif np.sum(model_dict[f"VROT_2"]) == 0:
-        models = ['ROTCUR']
+    if output_dict['Corruption'] in ['ROTCUR','DISKFIT']:
+        models = [output_dict['Corruption']]
     else:
         models = ['TIRIFIC']
     if output_dict['Result'][0] > 0:
         deltas ={}
-        for model in models:
-            if model == 'DISK_FIT':
-                ext = '_2'
-            deltas[model] = {}
+        model = models[0]
+        #for model in models:
+        #    if model == 'DISK_FIT':
+        #        ext = '_2'
+        deltas[model] = {}
         #First some odd deltas
-            deltas[model]['MAX_EXTEND'] = get_diff_rmax(\
+        deltas[model]['MAX_EXTEND'] = get_diff_rmax(\
                 model_dict[f'RADI{ext}'],output_dict['RADI'],output_dict['BMAJ'][0])
         #If the model has a SBR profile we can determine a Tru RHI
         if model == 'TIRIFIC':
@@ -2018,24 +1910,34 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
             model_dict['FLUX'][0],output_dict['FLUX'][1]+model_dict['FLUX'][1]]
 
         #Then we go through the parameters in the output dictionary
+        parameters_av = [f"'{x.upper()}'" for x in output_dict]
+        #print(f'''{','.join(parameters_av)}''')
+        ring_parameters=['RADI','VROT','VROT_ERR','Z0','Z0_ERR','SBR',\
+            'SBR_ERR','INCL','INCL_ERR','PA','PA_ERR','XPOS','XPOS_ERR',\
+            'YPOS','YPOS_ERR','VSYS','VSYS_ERR','SDIS','SDIS_ERR','VROT_2'\
+            ,'VROT_2_ERR','Z0_2','Z0_2_ERR','SBR_2','SBR_2_ERR','INCL_2',\
+            'INCL_2_ERR','PA_2','PA_2_ERR','XPOS_2','XPOS_2_ERR','YPOS_2',\
+            'YPOS_2_ERR','VSYS_2','VSYS_2_ERR','SDIS_2','SDIS_2_ERR']
         for parameter in output_dict:
-            print(f'Starting to check {parameter}')
+            #print(f'Starting to check {parameter}')
             #If not a standard parameter we skip it
-            try:
-                length =  len(output_dict[parameter])
-                number = float(output_dict[parameter][0])
-            except:
-                print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
+            if parameter.upper() in ['DIRECTORY','DISTANCE','CAT_TYPE',\
+                'CUBE','CORRUPTION','CHANNEL_WIDTH',\
+                'NOISE','RESULT','BMIN','BMAJ','BPA','RMS','NUR',\
+                'CONDISP','CFLUX','CFLUX_2','DISTANCE','FLUX']:
+                #print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
                 continue
-
+            #print(f'{parameter} = {output_dict[parameter]}')
+         
             if parameter[-1] == '2' or parameter == 'RADI' or \
                 len(output_dict[parameter]) != len(output_dict['RADI']) \
                  or parameter[-4:] == '_ERR':
-                 print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
+                 #print(f"{parameter} is not a proper parameter varying per ring. Skipping it")
                  continue
             if np.sum(output_dict[parameter]) == 0. or \
                 np.isnan(output_dict[parameter][0]):
-                    raise ModelError(f'There is an error in the output {parameter} in {galaxy}')
+                    print(f'For {parameter} we find {output_dict[parameter]} this is unacceptable')
+                    raise ModelError(f'There is an error in the output {parameter}')
 
             # Set the normalisations values
             if parameter in ['VROT','SDIS','VSYS']:
@@ -2045,22 +1947,19 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
                 normalisation = float(output_dict['BMAJ'][0])/3600.
             else:
                 normalisation = 1.
-            if np.sum(model_dict[f"{parameter}{ext}"]) == 0.:
-                if parameter not in ['Z0','SBR','SDIS']:
-                    raise ModelError(f'We did not find model parameters for {parameter} in {model}')
-                else:
-                    deltas[model][parameter] = \
+            #print(model_dict)
+            #print(f'what is {ext}||')
+            if np.sum(model_dict[f"{parameter}{ext}"]) == 0. and \
+                model in ['ROTCUR','DISKFIT','TIRIFIC']:
+                #if parameter not in ['Z0','SBR','SDIS']:
+                #    print(model_dict)
+                #    raise ModelError(f'We did not find model parameters for {parameter} in {model}')
+                #else:
+                deltas[model][parameter] = \
                         [float('NaN'),float('NaN')]
-                continue
-            if model in ['ROTCUR','DISK_FIT']:
-                deltas[model][parameter] = get_diff(output_dict[parameter],\
-                    model_dict[f'{parameter}{ext}'],radii = output_dict['RADI'],\
-                    model_radii=model_dict[f'RADI{ext}'],errors =  \
-                    output_dict[f'{parameter}_ERR'],norm = normalisation,\
-                    second = output_dict[f'{parameter}_2'], \
-                    second_model = model_dict[f'{parameter}{ext}'],second_errors = \
-                    output_dict[f'{parameter}{ext}_ERR'])
-            elif model == 'TIRIFIC':
+                
+          
+            elif model in ['TIRIFIC','ROTCUR','DISKFIT']:
                 deltas[model][parameter] = get_diff(output_dict[parameter],\
                     model_dict[f'{parameter}'],radii = output_dict['RADI'],\
                     model_radii=model_dict['RADI'],errors =  \
@@ -2068,6 +1967,10 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
                     second = output_dict[f'{parameter}_2'], \
                     second_model = model_dict[f'{parameter}_2'],second_errors = \
                     output_dict[f'{parameter}_2_ERR'])
+                if parameter == 'VROT':
+                    print( model, deltas[model][parameter])
+                    if deltas[model][parameter][1] < 0:
+                        exit()
             else:
                 raise ModelError(f"The model {model} is not ours")
             print(f'For {parameter} we find a difference between mod and fit {deltas[model][parameter]}')

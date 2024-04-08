@@ -7,17 +7,17 @@ from astropy.io import fits
 import os
 
 def main():
-    '''Analyze both the Database and LVHIS fits of the GDL runs.'''
-    version = 'v0.1.1'
+    '''Analyze both the Database and LVHIS fits of the pyFAT runs.'''
+    version = 'v0.1.6'
 
     mpl_fm.fontManager.addfont("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf")
     #mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
 
-    LVHIS_Directory = f'/home/peter/FAT/LVHIS-26_pyFAT_v0.1.1/'
+    LVHIS_Directory = f'/home/peter/FAT/Complete/LVHIS-26_pyFAT_{version}/'
     missing_links = True
     LVHIS_config_file = 'FAT_defaults.yml'
     Database_config_file = 'FAT_defaults.yml'
-    Database_Directory = '/home/peter/FAT/Database_pyFAT_v0.1.1/'
+    Database_Directory = f'/home/peter/FAT/Complete/Database_pyFAT_{version}/'
     #Database_config_file = 'Noconvolve.yml'
     #Database_Directory = '/home/peter/FAT_Main/Bad_Fits'
 

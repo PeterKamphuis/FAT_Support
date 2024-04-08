@@ -19,11 +19,13 @@ def main():
     #mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
     missing_links = True
     Input_File = {'pyFAT':{'version':Pversion,
+                           'program': 'pyFAT',
                             'Database': {'dir': f'{directory}pyFAT_{Pversion}/Database/'\
                                         ,'config':'FAT_defaults.yml'},
                             'LVHIS': {'dir': f'{directory}pyFAT_{Pversion}/LVHIS-26/'\
                                     ,'config':'FAT_defaults.yml'}},
                   'GDL':{'version':Gversion,
+                         'program': 'GDL',
                             'Database': {'dir': f'{directory}GDL_{Gversion}/Database/'\
                                         ,'config':'FAT_INPUT.config'},
                             'LVHIS': {'dir': f'{directory}GDL_{Gversion}/LVHIS-26/'\
