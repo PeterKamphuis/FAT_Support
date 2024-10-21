@@ -408,20 +408,27 @@ skipping this galaxy''')
             keys = [x for x in Input_Parameters[galaxy] if x != comparison]
         else:
             keys = [program]
+        print(keys)    
         for key in keys:
             print(f'Processing the {key} code output')
-            try:
-                if not Input_Parameters[galaxy][key]:
-                    Input_Parameters[galaxy][key] = {'Missing': True}
-                elif Input_Parameters[galaxy][key]['Missing']:
+            #try:
+            print(key,galaxy)
+            print(Input_Parameters[galaxy][key])
+            if not Input_Parameters[galaxy][key]:
+                Input_Parameters[galaxy][key] = {'Missing': True}
+            elif 'Missing' in Input_Parameters[galaxy][key]:
+                if Input_Parameters[galaxy][key]['Missing'] is True:
                     pass
                 else:
-                    Input_Parameters[galaxy][key]['Missing'] = False
                     deltas = galaxy_deltas(Input_Parameters[galaxy][key],\
-                        Input_Parameters[galaxy][comparison])
-            except Exception as e:
-                traceback.print_exception(type(e),e,e.__traceback__)
-                exit()
+                    Input_Parameters[galaxy][comparison])
+            else:
+                Input_Parameters[galaxy][key]['Missing'] = False
+                deltas = galaxy_deltas(Input_Parameters[galaxy][key],\
+                    Input_Parameters[galaxy][comparison])
+            #except Exception as e:
+            #    traceback.print_exception(type(e),e,e.__traceback__)
+            #    exit()
 
 def plot_RCs(RCs, filename='RCs',database= None):
 

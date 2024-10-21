@@ -7,11 +7,11 @@ from astropy.io import fits
 import os
 import pickle
 def main():
-    version = 'v0.1.6'
-    directory = '/media/peter/Data/FAT_Main/Complete/'
+    version = 'v0.1.8'
+    directory = '/home/peter/FAT_Main/Test_Sets/Proper_Test_For_Beta/'
     missing_links = False
     read_all_input=True
-    adddelt=False
+    adddelt= False
     if read_all_input:
         adddelt =True
     if not adddelt:
@@ -19,19 +19,18 @@ def main():
     mpl_fm.fontManager.addfont("/usr/share/fonts/truetype/msttcorefonts/Times_New_Roman.ttf")
  
     #mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
-    #Input_File = {'pyFAT':{'version':version,
-    #                       'program': 'pyFAT',
-    #                        'Database': {'dir': f'{directory}'\
-    #                                    ,'config':'FAT_defaults.yml'}
-
-    #                      }
-    #              }
     Input_File = {'pyFAT':{'version':version,
                            'program': 'pyFAT',
-                            #'Database': {'dir': f'{directory}/Database_pyFAT_{version}/'\
-                            #            ,'config':'FAT_defaults.yml'},
-                            'LVHIS': {'dir': f'{directory}/LVHIS-26_pyFAT_{version}/'\
-                                    ,'config':'FAT_defaults.yml'}}}
+                            'Database': {'dir': f'{directory}'\
+                                        ,'config':'FAT_defaults.yml'}
+                          }
+                  }
+    #Input_File = {'pyFAT':{'version':version,
+    #                       'program': 'pyFAT',
+    #                        #'Database': {'dir': f'{directory}/Database_pyFAT_{version}/'\
+    #                        #            ,'config':'FAT_defaults.yml'},
+    #                        'LVHIS': {'dir': f'{directory}/LVHIS-26_pyFAT_{version}/'\
+    #                                ,'config':'FAT_defaults.yml'}}}
 
     if read_all_input:
         Input_Parameters = sf.obtain_parameters(Input_File,\
