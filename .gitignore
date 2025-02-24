@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#OLD_Analysis
+Old_Analysis
+
+#Pickles
+*.pkl

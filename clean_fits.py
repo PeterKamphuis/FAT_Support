@@ -8,10 +8,10 @@ import numpy as np
 
 
 
-maindir= '/home/peter/FAT/LVHIS-26'
-#maindir= '/home/peter/FAT/Database'
-cat = 'Data_LVHIS.txt'
-#cat = 'Output_Summary.txt'
+#maindir= '/home/peter/FAT/LVHIS-26'
+maindir= '/home/peter/FAT/Database'
+#cat = 'Data_LVHIS.txt'
+cat = 'Output_Summary.txt'
 clean = ['One_Step','Old_pyFAT', 'GDL','Finalmodel','Sofia_Output' ]
 #clean = ['GDL']
 
