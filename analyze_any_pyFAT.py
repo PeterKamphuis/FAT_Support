@@ -8,7 +8,7 @@ import os
 import pickle
 def main():
     version = 'v0.1.8'
-    directory = '/home/peter/FAT_Main/Test_Sets/Proper_Test_For_Beta/'
+    directory = '/home/peter/FAT_Main/'
     missing_links = False
     read_all_input=True
     adddelt= False
@@ -20,10 +20,11 @@ def main():
  
     #mpl_fm.fontManager.addfont("/home/pkamphuis/Fonts/Times_New_Roman.ttf")
     Input_File = {'pyFAT':{'version':version,
-                           'program': 'pyFAT',
-                            'Database': {'dir': f'{directory}'\
-                                        ,'config':'FAT_defaults.yml'}
-                          }
+                        'program': 'pyFAT',
+                        'Database': {'dir': f'{directory}/Full_Database/'\
+                            ,'config':'FAT_defaults.yml'},
+                        'LVHIS': {'dir': f'{directory}/LVHIS-26_Cleaned/'\
+                            ,'config':'FAT_defaults.yml'}},
                   }
     #Input_File = {'pyFAT':{'version':version,
     #                       'program': 'pyFAT',

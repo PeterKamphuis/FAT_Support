@@ -2325,8 +2325,9 @@ def galaxy_deltas(output_dict,model_dict,LVHIS=False):
                         second = output_dict['Fit_Parameters'][f'{parameter}_2'], \
                         second_model = model_dict[model][f'{parameter}_2'],second_errors = \
                         output_dict['Fit_Parameters'][f'{parameter}_2_ERR'])
-                    #if parameter == 'VROT':
-                    #    if deltas[model][parameter][1] < 0:
+                    if parameter == 'PA':
+                        if deltas[model][parameter][0] > 300:
+                            deltas[model][parameter][0] = 360.-deltas[model][parameter][0]
                     #        exit()
                 
                 print(f'For {parameter} we find a difference between mod and fit {deltas[model][parameter]}')
